@@ -1,0 +1,22 @@
+# Environment & secrets
+.env
+.envrc
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Database
+*.db
+*.sqlite3
+
+# Claude local config
+.claude/
+
+# Misc
+*.log

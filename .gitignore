@@ -1,0 +1,13 @@
+# Claude local settings
+.claude/settings.local.json
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Node / Vite
+node_modules/
+dist/
+.vite/
+dev-server.log
