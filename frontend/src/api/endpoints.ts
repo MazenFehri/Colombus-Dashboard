@@ -13,4 +13,6 @@ export const endpoints = {
   volatility: (b: string, q: string) => `${BASE}/rates/${b}/${q}/volatility`,
   alert: (b: string, q: string) => `${BASE}/alerts/${b}/${q}`,
   commentary: () => `${BASE}/ai/commentary`,
+  news: (b: string, q: string, date: string) =>
+    `${BASE}/news/${b}/${q}?date=${date}`,
 };
