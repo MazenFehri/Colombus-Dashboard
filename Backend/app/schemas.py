@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 _ORM_CONFIG = {"from_attributes": True}
@@ -85,3 +85,21 @@ class CommentaryOut(BaseModel):
     date: date
     cached: bool
     model_config = _ORM_CONFIG
+
+
+class NewsArticleOut(BaseModel):
+    title: str
+    url: str
+    source: str
+    published_at: Optional[datetime]
+    language: str
+    is_top: bool
+    model_config = _ORM_CONFIG
+
+
+class NewsResponse(BaseModel):
+    base: str
+    quote: str
+    date: date
+    top: list[NewsArticleOut]
+    more: list[NewsArticleOut]

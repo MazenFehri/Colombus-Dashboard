@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, Float, Date, DateTime, UniqueConstraint
+from sqlalchemy import Column, Integer, Text, Float, Date, DateTime, Boolean, UniqueConstraint
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -43,3 +43,20 @@ class AiCommentary(Base):
     commentary = Column(Text, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     __table_args__ = (UniqueConstraint("base_currency", "quote_currency", "date"),)
+
+
+class NewsArticle(Base):
+    __tablename__ = "news_articles"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    base_currency = Column(Text, nullable=False)
+    quote_currency = Column(Text, nullable=False)
+    date = Column(Date, nullable=False)
+    title = Column(Text, nullable=False)
+    url = Column(Text, nullable=False)
+    source = Column(Text, nullable=False, default="")
+    published_at = Column(DateTime, nullable=True)
+    language = Column(Text, nullable=False, default="")
+    relevance = Column(Float, nullable=True)
+    is_top = Column(Boolean, nullable=False, default=False)
+    fetched_at = Column(DateTime, server_default=func.now())
+    __table_args__ = (UniqueConstraint("base_currency", "quote_currency", "date", "url"),)
