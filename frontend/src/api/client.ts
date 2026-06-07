@@ -15,6 +15,21 @@ interface HighLow { high: number; high_date: string; low: number; low_date: stri
 interface Volatility { rolling_21d_std: number; annualized_vol: number; latest_date: string; }
 interface Alert { date: string; risk_level: string; change_pct: number; message: string; }
 interface Commentary { commentary: string; date: string; cached: boolean; }
+export interface NewsArticle {
+  title: string;
+  url: string;
+  source: string;
+  published_at: string | null;
+  language: string;
+  is_top: boolean;
+}
+export interface NewsResponse {
+  base: string;
+  quote: string;
+  date: string;
+  top: NewsArticle[];
+  more: NewsArticle[];
+}
 
 // ----- Aggregated, UI-friendly per-pair snapshot -----
 export interface PairAnalysis {
@@ -67,6 +82,13 @@ export async function fetchHistory(pair: string, days: number): Promise<RatePoin
   const { base, quote } = splitPair(pair);
   const { from, to } = rangeFrom(days);
   return jget<RatePoint[]>(endpoints.rates(base, quote, from, to));
+}
+
+/** News for a pair on a given day (top + more). */
+export async function fetchNews(pair: string, day: string): Promise<NewsResponse> {
+  if (USE_MOCKS) return fixtures.news(pair, day);
+  const { base, quote } = splitPair(pair);
+  return jget<NewsResponse>(endpoints.news(base, quote, day));
 }
 
 /** AI market commentary for the pair (generated server-side, cached per day). */

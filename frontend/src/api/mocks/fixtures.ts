@@ -62,4 +62,19 @@ export const fixtures = {
   history(pair: string, days: number): RatePoint[] {
     return genHistory(pair, days);
   },
+  news(pair: string, day: string) {
+    return {
+      base: pair.split('/')[0],
+      quote: pair.split('/')[1],
+      date: day,
+      top: [
+        { title: `${pair} steadies as central banks hold`, url: 'https://example.com/1',
+          source: 'example.com', published_at: `${day}T10:00:00`, language: 'english', is_top: true },
+      ],
+      more: [
+        { title: `Markets weigh ${pair} outlook`, url: 'https://example.com/2',
+          source: 'example.com', published_at: `${day}T08:00:00`, language: 'english', is_top: false },
+      ],
+    };
+  },
 };
