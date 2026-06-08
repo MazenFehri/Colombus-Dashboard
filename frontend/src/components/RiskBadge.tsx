@@ -10,10 +10,11 @@ function explain(risk: 'LOW' | 'MEDIUM' | 'HIGH', d1: number): string {
   return `Daily movement of ${abs}% is within normal range.`;
 }
 
-export function RiskBadge({ pair }: { pair: Pair }) {
-  const { data } = usePairAnalysis(pair);
+export function RiskBadge({ pair, asOf }: { pair: Pair; asOf?: string | null }) {
+  const { data } = usePairAnalysis(pair, asOf);
   const risk = data?.risk ?? 'LOW';
   const color = RISK_COLORS[risk].color;
+  const hasD1 = data != null && data.d1 != null;
 
   return (
     <section className="card risk-card" style={riskVar(color)}>
@@ -24,9 +25,11 @@ export function RiskBadge({ pair }: { pair: Pair }) {
           Current alert: <span className="accent">{risk}</span>
         </h2>
         <p className="risk-detail">
-          {data
-            ? `Daily movement: ${fmtPct(data.d1)}. ${explain(risk, data.d1)}`
-            : 'Loading risk assessment…'}
+          {!data
+            ? 'Loading risk assessment…'
+            : hasD1
+              ? `Daily movement: ${fmtPct(data.d1!)}. ${explain(risk, data.d1!)}`
+              : 'Insufficient history to assess daily movement.'}
         </p>
       </div>
     </section>

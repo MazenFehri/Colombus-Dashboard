@@ -6,10 +6,10 @@ export const isoDay = (d: Date): string => {
   return `${y}-${m}-${day}`;
 };
 
-/** A [from, to] ISO-day window ending today and spanning `days` back. */
-export function rangeFrom(days: number): { from: string; to: string } {
-  const to = new Date();
-  const from = new Date();
+/** A [from, to] ISO-day window ending at `end` (default today) spanning `days` back. */
+export function rangeFrom(days: number, end?: Date): { from: string; to: string } {
+  const to = end ? new Date(end) : new Date();
+  const from = new Date(to);
   from.setDate(to.getDate() - days);
   return { from: isoDay(from), to: isoDay(to) };
 }

@@ -11,3 +11,7 @@ node_modules/
 dist/
 .vite/
 dev-server.log
+*.tsbuildinfo
+
+# Local DB backups
+*.db.bak

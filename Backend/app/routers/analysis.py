@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
 from app.database import get_db
 from app import schemas
 from app.services import analytics, alert_engine
-from app.routers.rates import _ensure_rates_cached, SUPPORTED_PAIRS
+from app.routers.rates import _ensure_rates_cached, _validate_pair, SUPPORTED_PAIRS
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
@@ -57,3 +57,33 @@ def get_analysis_summary(db: Session = Depends(get_db)):
         biggest_mover=biggest_mover,
         pairs=pair_summaries,
     )
+
+
+@router.get("/{base}/{quote}/snapshot", response_model=schemas.SnapshotOut)
+def get_snapshot(
+    base: str,
+    quote: str,
+    as_of: date = Query(default_factory=date.today),
+    db: Session = Depends(get_db),
+):
+    """Full per-pair analysis as of a given date (defaults to today/live).
+
+    Resolves ``as_of`` to the nearest prior trading day server-side, so holidays
+    and weekends fall back gracefully.
+    """
+    base, quote = base.upper(), quote.upper()
+    _validate_pair(base, quote)
+
+    # ~400 calendar days of history ending at as_of covers the 30-day window and
+    # the rolling-21d volatility math with comfortable margin.
+    from_date = as_of - timedelta(days=400)
+    _ensure_rates_cached(db, base, quote, from_date, as_of)
+    df = analytics.load_rates_df(db, base, quote, from_date, as_of)
+
+    try:
+        snap = analytics.build_snapshot(df, as_of, quote)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+    snap["risk"] = snap["risk"].upper()
+    return schemas.SnapshotOut(**snap)

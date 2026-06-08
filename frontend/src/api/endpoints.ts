@@ -11,6 +11,8 @@ export const endpoints = {
     `${BASE}/rates/${b}/${q}/performance?period=${period}`,
   highLow: (b: string, q: string) => `${BASE}/rates/${b}/${q}/high-low`,
   volatility: (b: string, q: string) => `${BASE}/rates/${b}/${q}/volatility`,
+  snapshot: (b: string, q: string, asOf?: string) =>
+    `${BASE}/analysis/${b}/${q}/snapshot${asOf ? `?as_of=${asOf}` : ''}`,
   alert: (b: string, q: string) => `${BASE}/alerts/${b}/${q}`,
   commentary: () => `${BASE}/ai/commentary`,
 };

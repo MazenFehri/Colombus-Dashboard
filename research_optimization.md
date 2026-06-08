@@ -61,7 +61,7 @@ Add a `fetched_at` datetime column (server default: `now()`). The frontend can c
 
 #### d. Manual Refresh Endpoint
 
-`POST /api/v1/admin/refresh?pair=USD/TND` — triggers an immediate re-fetch for a specific pair and date range. Useful for operators when BCT data is known to have been missing.
+`POST /api/v1/admin/refresh?pair=USD/TND` — triggers an immediate re-fetch for a specific pair and date range. Useful for operators when  data is known to have been missing.
 
 ---
 
@@ -79,7 +79,7 @@ It does **not** contain any information about *why* the rate moved. The AI can d
 ### What Is Missing
 
 Context the AI needs to produce accurate interpretations:
-- Central bank decisions (BCT rate changes, Fed/ECB meetings)
+- Central bank decisions ( rate changes, Fed/ECB meetings)
 - Macroeconomic releases (CPI, GDP, trade balance)
 - Geopolitical events (election results, sanctions, trade deals)
 - Commodity prices (oil, phosphates for TND-specific context)

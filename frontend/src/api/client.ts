@@ -1,6 +1,6 @@
 import { endpoints } from './endpoints';
 import { splitPair, type Risk } from '../lib/constants';
-import { rangeFrom, isoDay } from '../lib/dates';
+import { rangeFrom, isoDay, parseDay } from '../lib/dates';
 import { fixtures } from './mocks/fixtures';
 
 // Toggle: when VITE_USE_MOCKS is "true", serve hardcoded fixtures instead of
@@ -9,23 +9,32 @@ const USE_MOCKS = String(import.meta.env.VITE_USE_MOCKS ?? '').toLowerCase() ===
 
 // ----- Raw backend response shapes (mirror app/schemas.py) -----
 export interface RatePoint { date: string; rate: number; }
-interface DailyChange { date: string; rate: number; prev_rate: number; change_pct: number; }
-interface Performance { period: string; start_date: string; end_date: string; start_rate: number; end_rate: number; change_pct: number; }
-interface HighLow { high: number; high_date: string; low: number; low_date: string; }
-interface Volatility { rolling_21d_std: number; annualized_vol: number; latest_date: string; }
-interface Alert { date: string; risk_level: string; change_pct: number; message: string; }
 interface Commentary { commentary: string; date: string; cached: boolean; }
+
+// Raw snapshot response (mirrors app/schemas.py SnapshotOut).
+interface Snapshot {
+  resolved_date: string;
+  rate: number;
+  d1: number | null;
+  d7: number | null;
+  d30: number | null;
+  high: number;
+  low: number;
+  volatility: number | null; // rolling_21d_std (daily)
+  risk: string;
+}
 
 // ----- Aggregated, UI-friendly per-pair snapshot -----
 export interface PairAnalysis {
   rate: number;
-  d1: number;
-  d7: number;
-  d30: number;
+  d1: number | null;
+  d7: number | null;
+  d30: number | null;
   high: number;
   low: number;
-  volatility: number; // daily %, derived from rolling_21d_std * 100
+  volatility: number | null; // daily %, derived from rolling_21d_std * 100
   risk: Risk;
+  resolvedDate: string;
 }
 
 async function jget<T>(url: string): Promise<T> {
@@ -35,37 +44,35 @@ async function jget<T>(url: string): Promise<T> {
 }
 
 /**
- * Pull every metric the dashboard needs for one pair and fold the separate
- * backend endpoints into a single snapshot the components consume.
+ * Pull the dashboard's per-pair metrics in a single consolidated snapshot
+ * request. `asOf` (YYYY-MM-DD) time-travels to a historical date; omit it for
+ * the live (today) snapshot.
  */
-export async function fetchPairAnalysis(pair: string): Promise<PairAnalysis> {
+export async function fetchPairAnalysis(pair: string, asOf?: string): Promise<PairAnalysis> {
   if (USE_MOCKS) return fixtures.analysis(pair);
   const { base, quote } = splitPair(pair);
-  const [dc, wk, mo, hl, vol, alert] = await Promise.all([
-    jget<DailyChange>(endpoints.dailyChange(base, quote)),
-    jget<Performance>(endpoints.performance(base, quote, 'weekly')),
-    jget<Performance>(endpoints.performance(base, quote, 'monthly')),
-    jget<HighLow>(endpoints.highLow(base, quote)),
-    jget<Volatility>(endpoints.volatility(base, quote)).catch(() => null), // needs >= 21 days
-    jget<Alert>(endpoints.alert(base, quote)),
-  ]);
+  const s = await jget<Snapshot>(endpoints.snapshot(base, quote, asOf));
   return {
-    rate: dc.rate,
-    d1: dc.change_pct,
-    d7: wk.change_pct,
-    d30: mo.change_pct,
-    high: hl.high,
-    low: hl.low,
-    volatility: vol ? Number((vol.rolling_21d_std * 100).toFixed(2)) : 0,
-    risk: (alert.risk_level || 'low').toUpperCase() as Risk,
+    rate: s.rate,
+    d1: s.d1,
+    d7: s.d7,
+    d30: s.d30,
+    high: s.high,
+    low: s.low,
+    volatility: s.volatility === null ? null : Number((s.volatility * 100).toFixed(2)),
+    risk: (s.risk || 'low').toUpperCase() as Risk,
+    resolvedDate: s.resolved_date,
   };
 }
 
-/** Historical rate series for the chart over the last `days` days. */
-export async function fetchHistory(pair: string, days: number): Promise<RatePoint[]> {
+/**
+ * Historical rate series for the chart over the last `days` days. When `asOf`
+ * (YYYY-MM-DD) is supplied the trailing window ends at that date instead of today.
+ */
+export async function fetchHistory(pair: string, days: number, asOf?: string): Promise<RatePoint[]> {
   if (USE_MOCKS) return fixtures.history(pair, days);
   const { base, quote } = splitPair(pair);
-  const { from, to } = rangeFrom(days);
+  const { from, to } = rangeFrom(days, asOf ? parseDay(asOf) : undefined);
   return jget<RatePoint[]>(endpoints.rates(base, quote, from, to));
 }
 

@@ -11,7 +11,7 @@ import {
   type ChartOptions,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { useHistory } from '../hooks/usePairAnalysis';
+import { useHistory, usePairAnalysis } from '../hooks/usePairAnalysis';
 import { RATE_DECIMALS, type Pair } from '../lib/constants';
 import { fmtRate, fmtDate } from '../lib/format';
 import { parseDay } from '../lib/dates';
@@ -32,9 +32,13 @@ function gradient(ctx: ScriptableContext<'line'>): string | CanvasGradient {
   return g;
 }
 
-export function RateChart({ pair }: { pair: Pair }) {
+export function RateChart({ pair, asOf }: { pair: Pair; asOf?: string | null }) {
   const [days, setDays] = useState<number>(30);
-  const { data: rows = [] } = useHistory(pair, days);
+  // When time-travelling, anchor the trailing window at the server-resolved
+  // trading day (falls back to the picked date until the snapshot loads).
+  const { data: snap } = usePairAnalysis(pair, asOf);
+  const end = asOf ? snap?.resolvedDate ?? asOf : null;
+  const { data: rows = [] } = useHistory(pair, days, end);
 
   const labels = rows.map((r) => fmtDate(parseDay(r.date)));
   const values = rows.map((r) => r.rate);
