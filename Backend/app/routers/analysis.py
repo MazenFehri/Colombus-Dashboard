@@ -30,7 +30,7 @@ def get_analysis_summary(db: Session = Depends(get_db)):
                 vol_data = analytics.calc_volatility(df)
 
             spike = analytics.is_spike(df)
-            risk_level, _ = alert_engine.classify_risk(change_pct, spike=spike)
+            risk_level, _ = alert_engine.classify_risk(change_pct, spike=spike, quote=quote)
 
             pair_summaries.append(schemas.PairSummary(
                 pair=f"{base}/{quote}",

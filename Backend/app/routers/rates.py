@@ -3,12 +3,11 @@ from sqlalchemy.orm import Session
 from datetime import date, timedelta
 from app.database import get_db
 from app import models, schemas
-from app.services import frankfurter, analytics, bct
+from app.services import frankfurter, analytics
 
 router = APIRouter(prefix="/rates", tags=["rates"])
 
 SUPPORTED_PAIRS = {("EUR", "USD"), ("GBP", "USD"), ("USD", "TND"), ("EUR", "TND")}
-TND_PAIRS = {("USD", "TND"), ("EUR", "TND")}
 
 
 def _validate_pair(base: str, quote: str):
@@ -31,12 +30,8 @@ def _ensure_rates_cached(db: Session, base: str, quote: str, from_date: date, to
         return
 
     try:
-        if (base, quote) in TND_PAIRS:
-            new_rates = bct.fetch_rates(base, quote, from_date, to_date)
-            source = "bct"
-        else:
-            new_rates = frankfurter.fetch_rates(base, quote, from_date, to_date)
-            source = "frankfurter"
+        new_rates = frankfurter.fetch_rates(base, quote, from_date, to_date)
+        source = "frankfurter"
     except RuntimeError as e:
         if count == 0:
             raise HTTPException(503, str(e))

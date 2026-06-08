@@ -68,10 +68,23 @@ def calc_high_low(df: pd.DataFrame) -> dict:
     }
 
 
+def _normalized_returns(df: pd.DataFrame) -> pd.Series:
+    """Daily returns normalized by actual calendar-day gaps between observations.
+
+    Rate data has missing days (weekends, public holidays). A raw pct_change over
+    a 3-day gap would be counted as a 1-day return, inflating volatility estimates.
+    Dividing by sqrt(gap_days) rescales multi-day returns to a 1-day equivalent
+    so the rolling std is a consistent estimator of 1-day volatility.
+    """
+    day_gaps = df["date"].diff().dt.days.fillna(1).clip(lower=1)
+    raw = df["rate"].pct_change()
+    return (raw / np.sqrt(day_gaps)).dropna()
+
+
 def calc_volatility(df: pd.DataFrame) -> dict:
     if len(df) < 21:
         raise ValueError("Need at least 21 days of data for volatility")
-    pct = df["rate"].pct_change().dropna()
+    pct = _normalized_returns(df)
     rolling_stds = pct.rolling(21).std().dropna()
     # Use most recent non-zero rolling std — a flat tail (e.g. scraped constant values)
     # would otherwise mask real historical volatility.
@@ -88,7 +101,11 @@ def calc_volatility(df: pd.DataFrame) -> dict:
 def is_spike(df: pd.DataFrame) -> bool:
     if len(df) < 64:
         return False
-    pct = df["rate"].pct_change().dropna()
+    pct = _normalized_returns(df)
+    if len(pct) < 63:
+        return False
     latest = float(pct.iloc[-1])
     sigma = float(pct.rolling(63).std().dropna().iloc[-1])
+    if sigma == 0:
+        return False
     return abs(latest) > 3 * sigma

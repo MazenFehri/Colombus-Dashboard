@@ -6,7 +6,7 @@ FAWAZAHMED_BASE = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest
 
 
 def fetch_rates(base: str, quote: str, from_date: date, to_date: date) -> dict[date, float]:
-    """Fetch rates from Frankfurter; fall back to fawazahmed0. Returns {date: rate}."""
+    """Fetch rates from Frankfurter v2; fall back to fawazahmed0. Returns {date: rate}."""
     try:
         return _fetch_frankfurter(base, quote, from_date, to_date)
     except Exception:
@@ -18,15 +18,17 @@ def fetch_rates(base: str, quote: str, from_date: date, to_date: date) -> dict[d
 
 
 def _fetch_frankfurter(base: str, quote: str, from_date: date, to_date: date) -> dict[date, float]:
-    url = f"{FRANKFURTER_BASE}/{from_date}..{to_date}"
-    params = {"base": base, "symbols": quote}
+    # Frankfurter v2 /rates returns a flat list: [{"date","base","quote","rate"}, ...].
+    # A from/to range yields one entry per business day in the window.
+    url = f"{FRANKFURTER_BASE}/rates"
+    params = {"base": base, "quotes": quote, "from": from_date.isoformat(), "to": to_date.isoformat()}
     resp = httpx.get(url, params=params, timeout=10)
     resp.raise_for_status()
     data = resp.json()
     result: dict[date, float] = {}
-    for date_str, rates in data.get("rates", {}).items():
-        if quote in rates:
-            result[date.fromisoformat(date_str)] = float(rates[quote])
+    for entry in data:
+        if entry.get("quote") == quote:
+            result[date.fromisoformat(entry["date"])] = float(entry["rate"])
     return result
 
 
@@ -39,24 +41,3 @@ def _fetch_fawazahmed(base: str, quote: str, target_date: date) -> dict[date, fl
     if rate is None:
         raise ValueError(f"No rate found for {base}/{quote}")
     return {target_date: float(rate)}
-
-
-def _fetch_fawazahmed_range(base: str, quote: str, from_date: date, to_date: date) -> dict[date, float]:
-    """Fetch a date range from fawazahmed0 by hitting each date's versioned CDN URL."""
-    from datetime import timedelta
-    result: dict[date, float] = {}
-    current = from_date
-    while current <= to_date:
-        date_str = current.isoformat()
-        url = f"https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@{date_str}/v1/currencies/{base.lower()}.json"
-        try:
-            resp = httpx.get(url, timeout=10)
-            if resp.status_code == 200:
-                data = resp.json()
-                rate = data.get(base.lower(), {}).get(quote.lower())
-                if rate is not None:
-                    result[current] = float(rate)
-        except Exception:
-            pass
-        current += timedelta(days=1)
-    return result
