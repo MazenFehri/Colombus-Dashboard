@@ -114,6 +114,7 @@ class NewsArticleOut(BaseModel):
 class NewsResponse(BaseModel):
     base: str
     quote: str
-    date: date
+    date: date              # the date the user asked for
+    effective_date: date    # the date the returned articles are actually from (nearest-day)
     top: list[NewsArticleOut]
     more: list[NewsArticleOut]

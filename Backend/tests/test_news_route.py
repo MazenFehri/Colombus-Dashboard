@@ -39,3 +39,21 @@ def test_news_route_empty_when_no_articles(client):
         resp = client.get("/api/v1/news/EUR/USD?date=2026-06-05")
     assert resp.status_code == 200
     assert resp.json()["top"] == []
+
+
+def test_news_route_includes_effective_date(client):
+    with patch("app.services.news_service.DEFAULT_PROVIDERS",
+               [type("P", (), {"name": "f", "fetch": lambda self, b, q, d: _arts(2)})()]):
+        resp = client.get("/api/v1/news/EUR/USD?date=2026-06-05")
+    assert resp.status_code == 200
+    assert resp.json()["effective_date"] == "2026-06-05"
+
+
+def test_news_route_never_500_on_service_error(client):
+    # Even if the service layer itself blows up, the route must not 500 — the UI
+    # should show "no news", never "temporarily unavailable".
+    with patch("app.services.news_service.get_news_nearest",
+               side_effect=RuntimeError("service exploded")):
+        resp = client.get("/api/v1/news/EUR/USD?date=2026-06-05")
+    assert resp.status_code == 200
+    assert resp.json()["top"] == [] and resp.json()["more"] == []

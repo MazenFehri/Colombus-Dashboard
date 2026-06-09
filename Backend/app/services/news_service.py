@@ -2,10 +2,13 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 from app import models
 from app.services import analytics, alert_engine, article_fetcher, news_explainer
-from app.services.news_config import TOP_N, TODAY_REFRESH_HOURS
+from app.services.news_config import TOP_N, TODAY_REFRESH_HOURS, NEAREST_DAY_WINDOW
 from app.services.news_providers.gdelt import GdeltProvider
+from app.services.news_providers.gnews import GNewsProvider
 
-DEFAULT_PROVIDERS = [GdeltProvider()]
+# GDELT first (free, no key); GNews as fallback for gaps GDELT can't cover
+# (older dates, rate-limited bursts). GNews no-ops without an API key.
+DEFAULT_PROVIDERS = [GdeltProvider(), GNewsProvider()]
 
 
 def _cached(db: Session, base: str, quote: str, on_date: date) -> list[models.NewsArticle]:
@@ -107,3 +110,22 @@ def get_or_fetch_news(db: Session, base: str, quote: str, on_date: date, provide
     rows = _cached(db, base, quote, on_date)
     _enrich_top(db, base, quote, on_date, rows)
     return _cached(db, base, quote, on_date)
+
+
+def get_news_nearest(db: Session, base: str, quote: str, on_date: date,
+                     window: int = NEAREST_DAY_WINDOW, providers=None):
+    """News for on_date, or the closest day within ±window that has any.
+    Returns (rows, effective_date). Used so calendar time-travel to a date with
+    no coverage still shows the nearest available news instead of nothing."""
+    rows = get_or_fetch_news(db, base, quote, on_date, providers=providers)
+    if rows:
+        return rows, on_date
+    today = date.today()
+    for offset in range(1, window + 1):
+        for cand in (on_date - timedelta(days=offset), on_date + timedelta(days=offset)):
+            if cand > today:
+                continue
+            rows = get_or_fetch_news(db, base, quote, cand, providers=providers)
+            if rows:
+                return rows, cand
+    return [], on_date

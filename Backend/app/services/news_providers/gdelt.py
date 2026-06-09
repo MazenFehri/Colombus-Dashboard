@@ -1,9 +1,22 @@
+import time
 import httpx
 from datetime import date, datetime
-from app.services.news_config import PAIR_QUERIES, MAX_ARTICLES
+from app.services.news_config import PAIR_QUERIES, MAX_ARTICLES, GDELT_MIN_INTERVAL_SEC
 from app.services.news_providers.base import Article
 
 GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
+
+# GDELT's free endpoint rate-limits to roughly one request every 5 seconds and
+# returns HTTP 429 when exceeded. Space *live* calls process-wide to stay under it.
+_last_live_call: float = 0.0
+
+
+def _throttle_live() -> None:
+    global _last_live_call
+    wait = GDELT_MIN_INTERVAL_SEC - (time.monotonic() - _last_live_call)
+    if wait > 0:
+        time.sleep(wait)
+    _last_live_call = time.monotonic()
 
 
 def _build_query(cfg: dict) -> str:
@@ -31,15 +44,27 @@ class GdeltProvider:
             "maxrecords": str(MAX_ARTICLES),
             "sort": "HybridRel",
         }
-        if on_date >= date.today():
+        is_live = on_date >= date.today()
+        if is_live:
             params["timespan"] = "3d"
+            # Only live/recent queries trip the rate limit; historical date-range
+            # queries return fast and don't, so we don't slow the nearest-day probe.
+            _throttle_live()
         else:
             params["startdatetime"] = on_date.strftime("%Y%m%d000000")
             params["enddatetime"] = on_date.strftime("%Y%m%d235959")
 
         resp = httpx.get(GDELT_URL, params=params, timeout=15)
+        # A 429 (rate-limited) is transient, not a hard failure — degrade to empty
+        # so the provider chain can fall back rather than surfacing an error.
+        if resp.status_code == 429:
+            return []
         resp.raise_for_status()
-        data = resp.json()
+        try:
+            data = resp.json()
+        except ValueError:
+            # GDELT occasionally returns a plain-text notice with HTTP 200.
+            return []
 
         articles: list[Article] = []
         for i, a in enumerate(data.get("articles", [])):
