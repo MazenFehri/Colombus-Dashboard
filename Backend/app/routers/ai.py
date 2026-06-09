@@ -16,9 +16,14 @@ def get_commentary(
     base, quote = body.base.upper(), body.quote.upper()
     _validate_pair(base, quote)
     try:
-        commentary, cached = ai_service.get_or_generate_commentary(db, base, quote, body.date)
+        commentary, cached, headlines = ai_service.get_or_generate_commentary(db, base, quote, body.date)
     except ValueError as e:
         raise HTTPException(422, str(e))
     except Exception:
         raise HTTPException(502, "AI commentary unavailable")
-    return schemas.CommentaryOut(commentary=commentary, date=body.date, cached=cached)
+    return schemas.CommentaryOut(
+        commentary=commentary,
+        date=body.date,
+        cached=cached,
+        headlines=[schemas.HeadlineOut(headline=h.headline, source=h.source, url=h.url) for h in headlines],
+    )

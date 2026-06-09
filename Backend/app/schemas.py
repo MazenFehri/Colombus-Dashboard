@@ -96,8 +96,16 @@ class CommentaryRequest(BaseModel):
     date: date
 
 
+class HeadlineOut(BaseModel):
+    headline: str
+    source: str
+    url: str
+    model_config = _ORM_CONFIG
+
+
 class CommentaryOut(BaseModel):
     commentary: str
     date: date
     cached: bool
+    headlines: list[HeadlineOut] = []
     model_config = _ORM_CONFIG
