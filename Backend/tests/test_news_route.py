@@ -1,6 +1,14 @@
+import pytest
 from unittest.mock import patch
 from datetime import datetime
 from app.services.news_providers.base import Article
+
+
+@pytest.fixture(autouse=True)
+def _no_network(monkeypatch):
+    # The news endpoint enriches top articles via scraping + Groq; keep tests offline.
+    monkeypatch.setattr("app.services.article_fetcher.fetch_article_text", lambda url: None)
+    monkeypatch.setattr("app.services.news_explainer.explain_article", lambda *a, **k: None)
 
 
 def _arts(n):

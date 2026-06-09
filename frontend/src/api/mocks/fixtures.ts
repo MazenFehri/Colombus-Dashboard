@@ -69,11 +69,13 @@ export const fixtures = {
       date: day,
       top: [
         { title: `${pair} steadies as central banks hold`, url: 'https://example.com/1',
-          source: 'example.com', published_at: `${day}T10:00:00`, language: 'english', is_top: true },
+          source: 'example.com', published_at: `${day}T10:00:00`, language: 'english', is_top: true,
+          explanation: `The latest moves around ${pair} were driven by central-bank signals, nudging the pair this session.` },
       ],
       more: [
         { title: `Markets weigh ${pair} outlook`, url: 'https://example.com/2',
-          source: 'example.com', published_at: `${day}T08:00:00`, language: 'english', is_top: false },
+          source: 'example.com', published_at: `${day}T08:00:00`, language: 'english', is_top: false,
+          explanation: null },
       ],
     };
   },

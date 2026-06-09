@@ -21,8 +21,7 @@ def test_commentary_returns_text(client, db_session):
         "USD/TND rose 0.3% today. This reflects moderate demand for US dollars."
     )
 
-    with patch("app.services.ai_service.Groq", return_value=mock_groq), \
-         patch("app.routers.ai.news_service.get_or_fetch_news", return_value=[]):
+    with patch("app.services.ai_service.Groq", return_value=mock_groq):
         resp = client.post("/api/v1/ai/commentary", json={
             "base": "USD", "quote": "TND", "date": "2024-01-09"
         })
@@ -44,10 +43,9 @@ def test_commentary_is_cached_on_second_call(client, db_session):
     ))
     db_session.commit()
 
-    with patch("app.routers.ai.news_service.get_or_fetch_news", return_value=[]):
-        resp = client.post("/api/v1/ai/commentary", json={
-            "base": "USD", "quote": "TND", "date": "2024-01-09"
-        })
+    resp = client.post("/api/v1/ai/commentary", json={
+        "base": "USD", "quote": "TND", "date": "2024-01-09"
+    })
     assert resp.status_code == 200
     data = resp.json()
     assert data["commentary"] == "Cached commentary text."
@@ -58,34 +56,8 @@ def test_commentary_returns_502_on_groq_failure(client, db_session):
     rates = {date(2024, 1, i): 3.0 + i * 0.01 for i in range(1, 10)}
     seed_rates(db_session, "USD", "TND", rates)
 
-    with patch("app.services.ai_service.Groq", side_effect=Exception("Groq down")), \
-         patch("app.routers.ai.news_service.get_or_fetch_news", return_value=[]):
+    with patch("app.services.ai_service.Groq", side_effect=Exception("Groq down")):
         resp = client.post("/api/v1/ai/commentary", json={
             "base": "USD", "quote": "TND", "date": "2024-01-09"
         })
     assert resp.status_code == 502
-
-
-def test_commentary_includes_headlines_in_prompt(client, db_session):
-    rates = {date(2024, 1, i): 3.0 + i * 0.01 for i in range(1, 10)}
-    seed_rates(db_session, "USD", "TND", rates)
-
-    captured = {}
-    mock_groq = MagicMock()
-    def capture(**kwargs):
-        captured["messages"] = kwargs["messages"]
-        r = MagicMock()
-        r.choices[0].message.content = "Dinar steady amid IMF talks."
-        return r
-    mock_groq.chat.completions.create.side_effect = capture
-
-    fake_headlines = [type("A", (), {"title": "IMF approves Tunisia loan", "is_top": True})()]
-    with patch("app.routers.ai.news_service.get_or_fetch_news", return_value=fake_headlines), \
-         patch("app.services.ai_service.Groq", return_value=mock_groq):
-        resp = client.post("/api/v1/ai/commentary", json={
-            "base": "USD", "quote": "TND", "date": "2024-01-09"
-        })
-
-    assert resp.status_code == 200
-    prompt = captured["messages"][0]["content"]
-    assert "IMF approves Tunisia loan" in prompt

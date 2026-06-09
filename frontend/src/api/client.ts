@@ -22,6 +22,7 @@ export interface NewsArticle {
   published_at: string | null;
   language: string;
   is_top: boolean;
+  explanation: string | null;
 }
 export interface NewsResponse {
   base: string;

@@ -1,7 +1,17 @@
 from datetime import date, datetime, timedelta
+from unittest.mock import patch
+import pytest
 from app import models
 from app.services import news_service
 from app.services.news_providers.base import Article
+
+
+@pytest.fixture(autouse=True)
+def _no_network(monkeypatch):
+    # Keep the cache-behaviour tests offline: no real scraping or Groq calls.
+    monkeypatch.setattr("app.services.article_fetcher.fetch_article_text", lambda url: None)
+    monkeypatch.setattr("app.services.news_explainer.explain_article",
+                        lambda *a, **k: None)
 
 
 def _arts(n):
@@ -55,3 +65,15 @@ def test_today_refetches_when_stale(db_session):
     db_session.commit()
     news_service.get_or_fetch_news(db_session, "EUR", "USD", today, providers=[p])
     assert p.calls == 2  # refetched
+
+
+def test_top_articles_get_explanations(db_session):
+    p = FakeProvider(_arts(5))
+    with patch("app.services.article_fetcher.fetch_article_text", return_value="Full article body text."), \
+         patch("app.services.news_explainer.explain_article", return_value="Explained: affects the pair."):
+        out = news_service.get_or_fetch_news(db_session, "EUR", "USD", date(2026, 6, 5), providers=[p])
+    top = [a for a in out if a.is_top]
+    more = [a for a in out if not a.is_top]
+    assert len(top) == news_service.TOP_N
+    assert all(a.explanation == "Explained: affects the pair." for a in top)
+    assert all(a.explanation is None for a in more)

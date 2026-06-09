@@ -94,6 +94,7 @@ class NewsArticleOut(BaseModel):
     published_at: Optional[datetime]
     language: str
     is_top: bool
+    explanation: Optional[str] = None
     model_config = _ORM_CONFIG
 
 
