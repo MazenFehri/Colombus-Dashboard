@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from app.services.analytics import (
     calc_daily_change, calc_performance, calc_high_low,
     calc_volatility, is_spike, build_snapshot,
+    calc_trend, calc_vol_regime, calc_momentum,
 )
 
 
@@ -125,3 +126,54 @@ def test_build_snapshot_no_data_before_as_of_raises():
     df = make_df([3.0, 3.1], start=date(2024, 1, 10))
     with pytest.raises(ValueError):
         build_snapshot(df, date(2024, 1, 1), "TND")
+
+
+def test_calc_trend_none_under_30_rows():
+    df = make_df([3.0 + i * 0.01 for i in range(20)])
+    assert calc_trend(df) is None
+
+
+def test_calc_trend_bullish():
+    # Rising series: recent MA7 above MA30
+    df = make_df([3.0 + i * 0.02 for i in range(40)])
+    result = calc_trend(df)
+    assert result is not None
+    assert result["direction"] == "bullish"
+    assert result["ma7"] > result["ma30"]
+
+
+def test_calc_trend_bearish():
+    df = make_df([4.0 - i * 0.02 for i in range(40)])
+    result = calc_trend(df)
+    assert result["direction"] == "bearish"
+
+
+def test_calc_trend_neutral_flat():
+    df = make_df([3.0 for _ in range(40)])
+    assert calc_trend(df)["direction"] == "neutral"
+
+
+def test_calc_vol_regime_none_when_short():
+    df = make_df([3.0 + i * 0.01 for i in range(50)])
+    assert calc_vol_regime(df) is None
+
+
+def test_calc_vol_regime_elevated():
+    import numpy as np
+    rng = np.random.default_rng(0)
+    calm = list(3.0 + np.cumsum(rng.normal(0, 0.001, 110)))
+    shock = [calm[-1] * (1 + x) for x in rng.normal(0, 0.05, 5)]
+    df = make_df(calm + shock)
+    assert calc_vol_regime(df) == "elevated"
+
+
+def test_calc_momentum_none_when_short():
+    assert calc_momentum(make_df([3.0, 3.1])) is None
+
+
+def test_calc_momentum_value():
+    # Accelerating move => positive momentum
+    df = make_df([3.00, 3.01, 3.04])
+    result = calc_momentum(df)
+    assert result is not None
+    assert result > 0
