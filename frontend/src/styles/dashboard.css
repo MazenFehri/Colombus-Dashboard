@@ -111,6 +111,76 @@ main {
   text-transform: uppercase;
 }
 
+/* Time-travel (as-of date) bar */
+.time-travel-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.date-travel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.date-travel-label {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.date-travel-input {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 13px;
+}
+.date-travel-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.date-travel-live {
+  background: var(--surface-2);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.date-travel-live:disabled {
+  opacity: 0.45;
+  cursor: default;
+  color: var(--text-dim);
+  border-color: var(--surface-2);
+}
+.asof-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+  color: var(--text);
+  border: 1px solid color-mix(in oklab, var(--accent) 40%, transparent);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.asof-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.asof-note {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
 /* KPI cards */
 .kpi-grid {
   display: grid;

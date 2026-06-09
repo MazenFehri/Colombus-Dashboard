@@ -31,7 +31,7 @@ def _compute_and_store_alert(db: Session, base: str, quote: str, target_date: da
         raise HTTPException(422, str(e))
 
     spike = analytics.is_spike(df)
-    risk_level, message = alert_engine.classify_risk(change_data["change_pct"], spike=spike)
+    risk_level, message = alert_engine.classify_risk(change_data["change_pct"], spike=spike, quote=quote)
 
     alert = models.Alert(
         base_currency=base,
