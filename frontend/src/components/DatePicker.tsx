@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { isoDay, parseDay } from '../lib/dates';
-
-const DATA_START = '2020-04-09';
+import { DATA_START } from '../lib/constants';
 
 /** Weekend = Saturday (6) or Sunday (0) in local terms. */
 function isWeekend(iso: string): boolean {

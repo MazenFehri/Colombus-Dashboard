@@ -5,6 +5,23 @@ from typing import Optional
 _ORM_CONFIG = {"from_attributes": True}
 
 
+class NewsArticleOut(BaseModel):
+    headline: str
+    source: str
+    url: str
+    published_at: Optional[datetime] = None
+    explanation: Optional[str] = None  # Groq "why it moved" paragraph (top items only)
+    model_config = _ORM_CONFIG
+
+
+class NewsResponse(BaseModel):
+    base: str
+    quote: str
+    date: date
+    top: list[NewsArticleOut]   # enriched with explanations
+    more: list[NewsArticleOut]  # plain headline links
+
+
 class CurrencyOut(BaseModel):
     code: str
     name: str
@@ -83,6 +100,9 @@ class SnapshotOut(BaseModel):
     high: float
     low: float
     volatility: Optional[float]
+    trend: Optional[str]
+    vol_regime: Optional[str]
+    momentum: Optional[float]
     risk: str
     model_config = _ORM_CONFIG
 
@@ -93,28 +113,16 @@ class CommentaryRequest(BaseModel):
     date: date
 
 
+class HeadlineOut(BaseModel):
+    headline: str
+    source: str
+    url: str
+    model_config = _ORM_CONFIG
+
+
 class CommentaryOut(BaseModel):
     commentary: str
     date: date
     cached: bool
+    headlines: list[HeadlineOut] = []
     model_config = _ORM_CONFIG
-
-
-class NewsArticleOut(BaseModel):
-    title: str
-    url: str
-    source: str
-    published_at: Optional[datetime]
-    language: str
-    is_top: bool
-    explanation: Optional[str] = None
-    model_config = _ORM_CONFIG
-
-
-class NewsResponse(BaseModel):
-    base: str
-    quote: str
-    date: date              # the date the user asked for
-    effective_date: date    # the date the returned articles are actually from (nearest-day)
-    top: list[NewsArticleOut]
-    more: list[NewsArticleOut]

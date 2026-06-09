@@ -99,6 +99,66 @@ def calc_volatility(df: pd.DataFrame) -> dict:
     }
 
 
+def calc_trend(df: pd.DataFrame) -> dict | None:
+    """MA7 vs MA30 directional signal. None if < 30 rows."""
+    if len(df) < 30:
+        return None
+    ma7 = float(df["rate"].tail(7).mean())
+    ma30 = float(df["rate"].tail(30).mean())
+    if ma30 == 0 or pd.isna(ma7) or pd.isna(ma30):
+        return None
+    spread = abs(ma7 - ma30) / ma30
+    if spread < 0.001:
+        direction = "neutral"
+    elif ma7 > ma30:
+        direction = "bullish"
+    else:
+        direction = "bearish"
+    return {"direction": direction, "ma7": round(ma7, 6), "ma30": round(ma30, 6)}
+
+
+def calc_vol_regime(df: pd.DataFrame) -> str | None:
+    """Current 21d vol vs the 90-obs average of that rolling vol.
+
+    elevated  > 1.5x average; compressed < 0.6x average; else normal.
+    None when there are < 90 rolling-std observations or the average is 0.
+    Requires at least 111 input rows (90 rolling-std observations).
+    """
+    pct = _normalized_returns(df)
+    rolling = pct.rolling(21).std().dropna()
+    if len(rolling) < 90:
+        return None
+    current = float(rolling.iloc[-1])
+    if current == 0:
+        return None
+    avg = float(rolling.tail(90).mean())
+    if avg == 0:
+        return None
+    if current > 1.5 * avg:
+        return "elevated"
+    if current < 0.6 * avg:
+        return "compressed"
+    return "normal"
+
+
+def calc_momentum(df: pd.DataFrame) -> float | None:
+    """Acceleration of the daily return: (today - yesterday) / |yesterday|.
+
+    Returns None if < 3 rows or yesterday's return is ~0.
+    """
+    if len(df) < 3:
+        return None
+    pct = _normalized_returns(df) * 100
+    # all-zero rates make every pct_change NaN -> dropped
+    if len(pct) < 2:
+        return None
+    today = float(pct.iloc[-1])
+    yest = float(pct.iloc[-2])
+    if abs(yest) < 1e-9:
+        return None
+    return round((today - yest) / abs(yest), 4)
+
+
 def build_snapshot(df: pd.DataFrame, as_of: date, quote: str) -> dict:
     """Compute the full per-pair analysis as of a target date.
 
@@ -144,6 +204,11 @@ def build_snapshot(df: pd.DataFrame, as_of: date, quote: str) -> dict:
     except ValueError:
         volatility = None
 
+    trend_info = calc_trend(sliced)
+    trend = trend_info["direction"] if trend_info else None
+    vol_regime = calc_vol_regime(sliced)
+    momentum = calc_momentum(sliced)
+
     if d1 is not None:
         risk, _ = alert_engine.classify_risk(d1, spike=is_spike(sliced), quote=quote)
     else:
@@ -158,6 +223,9 @@ def build_snapshot(df: pd.DataFrame, as_of: date, quote: str) -> dict:
         "high": high,
         "low": low,
         "volatility": volatility,
+        "trend": trend,
+        "vol_regime": vol_regime,
+        "momentum": momentum,
         "risk": risk,
     }
 

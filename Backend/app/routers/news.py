@@ -3,10 +3,20 @@ from sqlalchemy.orm import Session
 from datetime import date
 from app.database import get_db
 from app import schemas
-from app.services import news_service
+from app.services import news_section
 from app.routers.rates import _validate_pair
 
 router = APIRouter(prefix="/news", tags=["news"])
+
+
+def _out(it, explained: bool) -> schemas.NewsArticleOut:
+    return schemas.NewsArticleOut(
+        headline=it.headline,
+        source=it.source,
+        url=it.url,
+        published_at=it.published_at,
+        explanation=it.explanation if explained else None,
+    )
 
 
 @router.get("/{base}/{quote}", response_model=schemas.NewsResponse)
@@ -18,15 +28,13 @@ def get_news(
 ):
     base, quote = base.upper(), quote.upper()
     _validate_pair(base, quote)
-    # Never surface a 500 to the UI: on any failure degrade to an empty result
-    # so the News card shows "no news for this date" rather than an error.
+    # Never surface a 5xx to the UI: degrade to an empty result on any failure.
     try:
-        articles, effective = news_service.get_news_nearest(db, base, quote, date_param)
+        top, more = news_section.get_pair_news(db, base, quote, date_param)
     except Exception:
-        articles, effective = [], date_param
-    top = [a for a in articles if a.is_top]
-    more = [a for a in articles if not a.is_top]
+        top, more = [], []
     return schemas.NewsResponse(
         base=base, quote=quote, date=date_param,
-        effective_date=effective, top=top, more=more,
+        top=[_out(i, True) for i in top],
+        more=[_out(i, False) for i in more],
     )

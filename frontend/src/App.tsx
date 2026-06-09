@@ -7,6 +7,7 @@ import { DatePicker } from './components/DatePicker';
 import { AsOfBadge } from './components/AsOfBadge';
 import { KpiCards } from './components/KpiCards';
 import { RiskBadge } from './components/RiskBadge';
+import { SignalBadges } from './components/SignalBadges';
 import { RateChart } from './components/RateChart';
 import { VolatilityGauge } from './components/VolatilityGauge';
 import { ComparisonTable } from './components/ComparisonTable';
@@ -52,6 +53,7 @@ export default function App() {
         <KpiCards pair={pair} asOf={asOf} />
 
         <RiskBadge pair={pair} asOf={asOf} />
+        <SignalBadges pair={pair} asOf={asOf} />
 
         <section className="focus-grid">
           <RateChart pair={pair} asOf={asOf} />
@@ -61,7 +63,7 @@ export default function App() {
         <ComparisonTable active={pair} now={now} onSelect={setPair} asOf={asOf} />
 
         <MarketIntelligence pair={pair} now={now} />
-        <News pair={pair} asOf={asOf} />
+        <News pair={pair} />
       </main>
 
       <Footer />

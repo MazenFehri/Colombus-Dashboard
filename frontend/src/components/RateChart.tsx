@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Chart as ChartJS,
   LineElement,
@@ -10,16 +10,27 @@ import {
   type ScriptableContext,
   type ChartOptions,
 } from 'chart.js';
+import zoomPlugin from 'chartjs-plugin-zoom';
 import { Line } from 'react-chartjs-2';
 import { useHistory, usePairAnalysis } from '../hooks/usePairAnalysis';
-import { RATE_DECIMALS, type Pair } from '../lib/constants';
+import { DATA_START, RATE_DECIMALS, type Pair } from '../lib/constants';
 import { fmtRate, fmtDate } from '../lib/format';
 import { parseDay } from '../lib/dates';
 import { Card, CardHead } from './ui';
 
-ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip);
+ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip, zoomPlugin);
 
-const RANGES = [7, 30, 90] as const;
+// Period presets. `days: null` means "everything back to the data start",
+// resolved at render time against the window's end date.
+const RANGES: { label: string; days: number | null }[] = [
+  { label: '7D', days: 7 },
+  { label: '30D', days: 30 },
+  { label: '90D', days: 90 },
+  { label: '1Y', days: 365 },
+  { label: 'ALL', days: null },
+];
+
+const DAY_MS = 86_400_000;
 
 function gradient(ctx: ScriptableContext<'line'>): string | CanvasGradient {
   const { chart } = ctx;
@@ -33,17 +44,41 @@ function gradient(ctx: ScriptableContext<'line'>): string | CanvasGradient {
 }
 
 export function RateChart({ pair, asOf }: { pair: Pair; asOf?: string | null }) {
-  const [days, setDays] = useState<number>(30);
+  const [rangeIdx, setRangeIdx] = useState<number>(1); // default 30D
+  const [zoomed, setZoomed] = useState(false);
+  const chartRef = useRef<ChartJS<'line'>>(null);
+
   // When time-travelling, anchor the trailing window at the server-resolved
   // trading day (falls back to the picked date until the snapshot loads).
   const { data: snap } = usePairAnalysis(pair, asOf);
   const end = asOf ? snap?.resolvedDate ?? asOf : null;
+
+  // Resolve the preset to a concrete day count. "ALL" spans from the data start
+  // to the window's end (today, or the as-of trading day).
+  const preset = RANGES[rangeIdx];
+  const endDate = end ? parseDay(end) : new Date();
+  const allDays = Math.max(1, Math.ceil((endDate.getTime() - parseDay(DATA_START).getTime()) / DAY_MS));
+  const days = preset.days ?? allDays;
+
   const { data: rows = [] } = useHistory(pair, days, end);
 
-  const labels = rows.map((r) => fmtDate(parseDay(r.date)));
-  const values = rows.map((r) => r.rate);
+  // A new data series invalidates any prior zoom/pan — start fresh.
+  useEffect(() => {
+    chartRef.current?.resetZoom();
+    setZoomed(false);
+  }, [pair, days, end]);
 
-  const options: ChartOptions<'line'> = {
+  const resetZoom = () => {
+    chartRef.current?.resetZoom();
+    setZoomed(false);
+  };
+
+  // Setting the flag to its current value (true) is a no-op React skips, so only
+  // the first zoom/pan re-renders. Combined with the memoized data/options, this
+  // stops react-chartjs-2 from running a chart.update() that discards the zoom.
+  const markZoomed = useCallback(() => setZoomed(true), []);
+
+  const options = useMemo<ChartOptions<'line'>>(() => ({
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
@@ -64,6 +99,22 @@ export function RateChart({ pair, asOf }: { pair: Pair; asOf?: string | null }) 
           label: (item) => `  ${pair}  ${fmtRate(item.parsed.y ?? 0, RATE_DECIMALS)}`,
         },
       },
+      zoom: {
+        limits: { x: { minRange: 3 } },
+        // Wheel + pinch zoom in/out, drag to pan — all locked to the time axis.
+        zoom: {
+          wheel: { enabled: true },
+          pinch: { enabled: true },
+          drag: { enabled: false },
+          mode: 'x',
+          onZoomComplete: markZoomed,
+        },
+        pan: {
+          enabled: true,
+          mode: 'x',
+          onPanComplete: markZoomed,
+        },
+      },
     },
     scales: {
       x: {
@@ -81,14 +132,14 @@ export function RateChart({ pair, asOf }: { pair: Pair; asOf?: string | null }) 
         },
       },
     },
-  };
+  }), [pair, markZoomed]);
 
-  const chartData = {
-    labels,
+  const chartData = useMemo(() => ({
+    labels: rows.map((r) => fmtDate(parseDay(r.date))),
     datasets: [
       {
         label: 'Rate',
-        data: values,
+        data: rows.map((r) => r.rate),
         borderColor: '#C8A84B',
         borderWidth: 2,
         pointRadius: 0,
@@ -101,30 +152,37 @@ export function RateChart({ pair, asOf }: { pair: Pair; asOf?: string | null }) 
         backgroundColor: gradient,
       },
     ],
-  };
+  }), [rows]);
 
   return (
     <Card className="chart-card">
       <CardHead
         title="Historical Rate"
-        hint={`${days}-day rate history`}
+        hint="Scroll to zoom · drag to pan"
         right={
-          <div className="range-tabs">
-            {RANGES.map((r) => (
-              <button
-                key={r}
-                type="button"
-                className={r === days ? 'active' : ''}
-                onClick={() => setDays(r)}
-              >
-                {r}D
+          <div className="chart-controls">
+            {zoomed && (
+              <button type="button" className="chart-reset" onClick={resetZoom}>
+                Reset zoom
               </button>
-            ))}
+            )}
+            <div className="range-tabs">
+              {RANGES.map((r, i) => (
+                <button
+                  key={r.label}
+                  type="button"
+                  className={i === rangeIdx ? 'active' : ''}
+                  onClick={() => setRangeIdx(i)}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
           </div>
         }
       />
       <div className="chart-wrap">
-        <Line data={chartData} options={options} />
+        <Line ref={chartRef} data={chartData} options={options} />
       </div>
     </Card>
   );

@@ -70,3 +70,18 @@ def test_snapshot_no_data_before_as_of_returns_422(client, db_session):
 def test_snapshot_unsupported_pair(client):
     resp = client.get("/api/v1/analysis/USD/JPY/snapshot")
     assert resp.status_code == 400
+
+
+def test_snapshot_endpoint_returns_signal_fields(client, db_session):
+    start = date(2024, 1, 1)
+    for i in range(120):
+        db_session.add(models.ExchangeRate(
+            base_currency="EUR", quote_currency="USD",
+            rate=1.08 + i * 0.0005, date=start + timedelta(days=i), source="test",
+        ))
+    db_session.commit()
+    as_of = (start + timedelta(days=119)).isoformat()
+    resp = client.get(f"/api/v1/analysis/EUR/USD/snapshot?as_of={as_of}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "trend" in body and "vol_regime" in body and "momentum" in body

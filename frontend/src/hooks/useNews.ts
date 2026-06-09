@@ -1,14 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchNews } from '../api/client';
-import { isoDay } from '../lib/dates';
 
-/** News for a pair, as of `asOf` (null = live/today). Follows the calendar's
- *  asOf date so it refetches when the user time-travels. Mirrors usePairAnalysis. */
-export function useNews(pair: string, asOf: string | null = null) {
-  const day = asOf ?? isoDay(new Date());
+/** Latest news for a pair (keyless RSS, live). Mirrors useCommentary. */
+export function useNews(pair: string) {
   return useQuery({
-    queryKey: ['news', pair, day],
-    queryFn: () => fetchNews(pair, day),
+    queryKey: ['news', pair],
+    queryFn: () => fetchNews(pair),
     retry: false,
     staleTime: 5 * 60 * 1000,
   });

@@ -9,21 +9,20 @@ const USE_MOCKS = String(import.meta.env.VITE_USE_MOCKS ?? '').toLowerCase() ===
 
 // ----- Raw backend response shapes (mirror app/schemas.py) -----
 export interface RatePoint { date: string; rate: number; }
-interface Commentary { commentary: string; date: string; cached: boolean; }
+interface Commentary { commentary: string; date: string; cached: boolean; headlines: Headline[]; }
+export interface Headline { headline: string; source: string; url: string; }
+export interface CommentaryResult { commentary: string; headlines: Headline[]; }
 export interface NewsArticle {
-  title: string;
-  url: string;
+  headline: string;
   source: string;
+  url: string;
   published_at: string | null;
-  language: string;
-  is_top: boolean;
   explanation: string | null;
 }
 export interface NewsResponse {
   base: string;
   quote: string;
   date: string;
-  effective_date: string;
   top: NewsArticle[];
   more: NewsArticle[];
 }
@@ -38,6 +37,9 @@ interface Snapshot {
   high: number;
   low: number;
   volatility: number | null; // rolling_21d_std (daily)
+  trend: string | null;
+  vol_regime: string | null;
+  momentum: number | null;
   risk: string;
 }
 
@@ -50,6 +52,9 @@ export interface PairAnalysis {
   high: number;
   low: number;
   volatility: number | null; // daily %, derived from rolling_21d_std * 100
+  trend: string | null;
+  volRegime: string | null;
+  momentum: number | null;
   risk: Risk;
   resolvedDate: string;
 }
@@ -77,6 +82,9 @@ export async function fetchPairAnalysis(pair: string, asOf?: string): Promise<Pa
     high: s.high,
     low: s.low,
     volatility: s.volatility === null ? null : Number((s.volatility * 100).toFixed(2)),
+    trend: s.trend,
+    volRegime: s.vol_regime,
+    momentum: s.momentum,
     risk: (s.risk || 'low').toUpperCase() as Risk,
     resolvedDate: s.resolved_date,
   };
@@ -93,16 +101,17 @@ export async function fetchHistory(pair: string, days: number, asOf?: string): P
   return jget<RatePoint[]>(endpoints.rates(base, quote, from, to));
 }
 
-/** News for a pair on a given day (top + more). */
-export async function fetchNews(pair: string, day: string): Promise<NewsResponse> {
-  if (USE_MOCKS) return fixtures.news(pair, day);
+/** Latest news articles for the pair (live/today, not time-travelled). */
+export async function fetchNews(pair: string): Promise<NewsResponse> {
   const { base, quote } = splitPair(pair);
+  const day = isoDay(new Date());
+  if (USE_MOCKS) return fixtures.news(pair, day) as NewsResponse;
   return jget<NewsResponse>(endpoints.news(base, quote, day));
 }
 
-/** AI market commentary for the pair (generated server-side, cached per day). */
-export async function fetchCommentary(pair: string): Promise<string> {
-  if (USE_MOCKS) return fixtures.commentary(pair);
+/** AI market commentary for the pair, plus the headlines that informed it. */
+export async function fetchCommentary(pair: string): Promise<CommentaryResult> {
+  if (USE_MOCKS) return { commentary: fixtures.commentary(pair), headlines: [] };
   const { base, quote } = splitPair(pair);
   const r = await fetch(endpoints.commentary(), {
     method: 'POST',
@@ -110,5 +119,6 @@ export async function fetchCommentary(pair: string): Promise<string> {
     body: JSON.stringify({ base, quote, date: isoDay(new Date()) }),
   });
   if (!r.ok) throw new Error(`POST commentary -> ${r.status}`);
-  return ((await r.json()) as Commentary).commentary;
+  const data = (await r.json()) as Commentary;
+  return { commentary: data.commentary, headlines: data.headlines ?? [] };
 }

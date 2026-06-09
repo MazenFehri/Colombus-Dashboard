@@ -4,6 +4,37 @@
 
 ---
 
+## Status & Decisions — 2026-06-09
+
+Two facts have changed since this doc was first written, and a direction has been chosen:
+
+1. **Data is now 100% Frankfurter v2.** The BCT scraper and the CSV were removed.
+   Every premise below that assumes BCT scraping (silent BCT gaps, BCT single-date
+   retry holes, TND-specific BCT/TAP scraping) is **obsolete** — Frankfurter returns
+   continuous, aligned history for all four pairs including TND.
+2. **The app runs as a local demo / portfolio**, not 24/7. So the always-on
+   **APScheduler** + **FetchLog** machinery (originally priority #1–2) is **deprioritized**
+   — it can't run reliably when the app isn't up. The right pattern is request-time
+   **fetch-and-cache with graceful degradation**.
+
+**Chosen next build (see `docs/superpowers/specs/2026-06-09-market-intelligence-design.md`):**
+combine **news-augmented intelligence (§2)** and **deeper analytics (§3)** into one
+enriched `MarketContext` that drives the AI commentary, with the analytics signals
+also surfaced in the UI via the existing snapshot endpoint.
+
+- **News source:** keyless **Google News RSS** + `feedparser` (no API key / rate
+  limit; degrades to `[]` on any failure). This supersedes the GNews-API
+  recommendation in §2a below.
+- **Signals built first:** trend (MA7/MA30), volatility regime, momentum — folded
+  into `build_snapshot` so they are **time-travel aware**.
+- **Risk fix:** the live AI prompt currently calls `classify_risk` *without* `quote`,
+  so its label is not TND-calibrated; `build_market_context` fixes this.
+- A deterministic **composite risk index** (shock + vol regime + abnormality,
+  fixed weights — distilled from the experimental `risk.py`, dropping its broken
+  PCA) is a strong follow-on but is **not** in the current build.
+
+---
+
 ## 1. Complete Data Persistence
 
 ### Current State
@@ -88,12 +119,18 @@ Context the AI needs to produce accurate interpretations:
 
 #### a. News Fetcher Service (`services/news.py`)
 
-Fetch and cache headlines from a free news API, keyed per pair per day.
+Fetch and cache headlines per pair per day.
 
-**Recommended source: GNews API** (free tier: 100 requests/day, no CC required)
-- Query template: `"EUR USD exchange rate" OR "euro dollar"` for EUR/USD
-- Query template: `"Tunisian dinar" OR "TND" OR "BCT"` for TND pairs
-- Fallback: Reuters RSS feed (`feeds.reuters.com/reuters/businessNews`) — always free, no auth, parseable with `feedparser`
+**Chosen source (2026-06-09): keyless Google News RSS** + `feedparser` — no API key,
+no rate limit, query-able, ideal for a local demo.
+- Query template: `"EUR USD exchange rate"` for EUR/USD
+- Query template: `"Tunisian dinar OR BCT OR Tunisia economy"` for TND pairs
+- URL: `https://news.google.com/rss/search?q=<query>&hl=en-US&gl=US&ceid=US:en`
+
+> _Originally this section recommended the GNews API (100 req/day). That was
+> superseded by keyless RSS to remove the API-key dependency and rate-limit risk
+> in a demo. GNews-with-RSS-fallback remains a valid upgrade if richer, query-
+> targeted results are ever needed._
 
 **Fetch strategy:**
 - Fetch once per pair per day (cached in `NewsItem` table)
@@ -255,16 +292,17 @@ The AI prompt is built from this struct. This separates *data assembly* from *pr
 
 ## Priority Order
 
-| Priority | Feature | Effort | Value |
-|----------|---------|--------|-------|
-| 1 | Background scheduler + proactive refresh | Medium | High — eliminates stale data |
-| 2 | `FetchLog` table + `fetched_at` column | Low | High — makes failures visible |
-| 3 | Trend signal + alert density endpoints | Low | Medium — feeds AI and UI |
-| 4 | News fetcher + `NewsItem` table + enriched prompt | Medium | High — biggest AI quality jump |
-| 5 | Volatility regime + momentum score | Low | Medium — richer analytics |
-| 6 | Cross-pair correlation endpoint | Low | Medium — novel insight |
-| 7 | Risk calendar heatmap (frontend) | Medium | Medium — visual impact |
-| 8 | TND-specific BCT/TAP news sources | Medium | High for TND pairs specifically |
+Re-prioritized 2026-06-09 for the local-demo context (scheduler/FetchLog dropped to the bottom):
+
+| Priority | Feature | Effort | Value | Status |
+|----------|---------|--------|-------|--------|
+| 1 | News (keyless RSS) + `NewsItem` + enriched prompt | Medium | High — biggest AI quality jump | **Building now** |
+| 2 | Trend + volatility regime + momentum signals (in snapshot) | Low | Medium — feeds AI + UI | **Building now** |
+| 3 | `MarketContext` consolidation + quote-aware risk fix | Low | High — clean, testable, fixes TND label | **Building now** |
+| 4 | Composite risk index (shock + regime + abnormality) | Low | Medium — analytical depth, deterministic | Strong follow-on |
+| 5 | Cross-pair correlation endpoint | Low | Medium — novel insight | Deferred |
+| 6 | Risk calendar heatmap (frontend) | Medium | Medium — visual impact | Deferred |
+| 7 | Background scheduler + `FetchLog` + `fetched_at` | Medium | Low for local demo (app isn't 24/7) | Deferred (not-for-demo) |
 
 ---
 

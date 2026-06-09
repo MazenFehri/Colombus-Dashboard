@@ -1,4 +1,4 @@
-import type { PairAnalysis, RatePoint } from '../client';
+import type { PairAnalysis, RatePoint, NewsResponse } from '../client';
 import { isoDay } from '../../lib/dates';
 
 // Hardcoded fallback data so the UI can run without a backend
@@ -6,18 +6,22 @@ import { isoDay } from '../../lib/dates';
 const DATA: Record<string, Omit<PairAnalysis, 'resolvedDate'> & { ai: string }> = {
   'EUR/USD': {
     rate: 1.0842, d1: 0.31, d7: -0.82, d30: 1.24, high: 1.0951, low: 1.0701, volatility: 0.42, risk: 'LOW',
+    trend: 'bullish', volRegime: 'normal', momentum: 0.31,
     ai: 'The Euro shows modest daily appreciation against the US Dollar, supported by stable ECB policy signals. Volatility remains within normal bounds at 0.42%, indicating low short-term FX risk for European-exposed corporate clients. Companies with USD payment obligations may consider this a favorable window for hedging.',
   },
   'GBP/USD': {
     rate: 1.2734, d1: -1.23, d7: -0.55, d30: 2.10, high: 1.2910, low: 1.2580, volatility: 1.31, risk: 'HIGH',
+    trend: 'bearish', volRegime: 'elevated', momentum: -1.23,
     ai: 'Sterling has recorded a sharp 1.23% decline against the Dollar today, driven by weaker UK manufacturing data and renewed dollar strength. With daily movement breaching the 1% high-risk threshold and volatility at 1.31%, corporate clients with GBP exposure should exercise caution and review open positions. A continued bearish trend is possible in the short term.',
   },
   'USD/TND': {
     rate: 3.1764, d1: 0.08, d7: 0.22, d30: 0.61, high: 3.1900, low: 3.1540, volatility: 0.15, risk: 'LOW',
+    trend: 'neutral', volRegime: 'compressed', momentum: 0.08,
     ai: "The Tunisian Dinar remains broadly stable against the US Dollar, with daily movement of just 0.08% — well within the low-risk threshold. The Central Bank of Tunisia's managed exchange rate policy continues to limit volatility. This pair presents minimal FX risk for import/export operations denominated in USD.",
   },
   'EUR/TND': {
     rate: 3.4428, d1: 0.74, d7: -0.31, d30: 1.87, high: 3.4750, low: 3.3900, volatility: 0.68, risk: 'MEDIUM',
+    trend: 'bullish', volRegime: 'normal', momentum: 0.74,
     ai: 'EUR/TND is showing moderate movement of 0.74% today, placing it in the medium-risk category. While not alarming, the trend suggests mild Euro strength that could slightly increase the cost of Euro-denominated imports for Tunisian businesses. Clients should monitor this pair over the next 48 hours.',
   },
 };
@@ -62,21 +66,36 @@ export const fixtures = {
   history(pair: string, days: number): RatePoint[] {
     return genHistory(pair, days);
   },
-  news(pair: string, day: string) {
+  news(pair: string, day: string): NewsResponse {
+    const [base, quote] = pair.split('/');
     return {
-      base: pair.split('/')[0],
-      quote: pair.split('/')[1],
+      base,
+      quote,
       date: day,
-      effective_date: day,
       top: [
-        { title: `${pair} steadies as central banks hold`, url: 'https://example.com/1',
-          source: 'example.com', published_at: `${day}T10:00:00`, language: 'english', is_top: true,
-          explanation: `The latest moves around ${pair} were driven by central-bank signals, nudging the pair this session.` },
+        {
+          headline: `${pair} gains on central bank policy divergence`,
+          source: 'CurrencyNews.co.uk',
+          url: 'https://example.com/news/1',
+          published_at: `${day}T08:00:00`,
+          explanation: `The ${pair} exchange rate edged higher as markets priced in diverging monetary policy paths between the two central banks. The ${base} benefited from hawkish commentary, while the ${quote} faced pressure from softer economic data. Clients with ${quote}-denominated obligations may wish to review their hedging strategies.`,
+        },
+        {
+          headline: `${base} holds steady ahead of key data releases`,
+          source: 'Reuters',
+          url: 'https://example.com/news/2',
+          published_at: `${day}T06:30:00`,
+          explanation: null,
+        },
       ],
       more: [
-        { title: `Markets weigh ${pair} outlook`, url: 'https://example.com/2',
-          source: 'example.com', published_at: `${day}T08:00:00`, language: 'english', is_top: false,
-          explanation: null },
+        {
+          headline: `${quote} weakens amid broader risk-off sentiment`,
+          source: 'Bloomberg',
+          url: 'https://example.com/news/3',
+          published_at: `${day}T05:00:00`,
+          explanation: null,
+        },
       ],
     };
   },
