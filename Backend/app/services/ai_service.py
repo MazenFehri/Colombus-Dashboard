@@ -23,8 +23,11 @@ class MarketContext:
 
 def build_market_context(db: Session, base: str, quote: str, target_date: date) -> MarketContext:
     """Assemble everything the AI needs. The only I/O is the cached news fetch."""
-    # 120 days back covers the 30-day trend MA and the ~111 rows vol-regime needs.
-    from_date = target_date - timedelta(days=120)
+    # 400 calendar days back (~280 trading rows) to cover what vol-regime needs:
+    # >=111 rows, i.e. >=90 rolling-21d-std observations. A shorter window leaves
+    # too few weekday rows and vol_regime is silently None. Matches the snapshot
+    # endpoint's load so the AI prompt and the UI badge agree for the same day.
+    from_date = target_date - timedelta(days=400)
     df = analytics.load_rates_df(db, base, quote, from_date, target_date)
     if len(df) < 2:
         raise ValueError("Not enough data to generate commentary")
