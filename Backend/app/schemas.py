@@ -126,3 +126,24 @@ class CommentaryOut(BaseModel):
     cached: bool
     headlines: list[HeadlineOut] = []
     model_config = _ORM_CONFIG
+
+
+class ForwardRateOut(BaseModel):
+    tenor: str
+    rate: float
+    pct_diff: float
+    model_config = _ORM_CONFIG
+
+
+class HedgeRecommendationOut(BaseModel):
+    signal: str
+    short_reason: str
+    narrative: str
+    exposure: str
+    as_of: date
+    spot_rate: float
+    change_30d: float
+    volatility: float
+    risk_level: str
+    forward_rates: list[ForwardRateOut] = []
+    model_config = _ORM_CONFIG

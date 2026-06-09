@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 from app.database import engine
 from app import models
-from app.routers import currencies, rates, alerts, analysis, ai, news
+from app.routers import currencies, rates, alerts, analysis, ai, news, hedge
 
 
 def _heal_schema() -> None:
@@ -41,3 +41,4 @@ app.include_router(alerts.router, prefix="/api/v1")
 app.include_router(analysis.router, prefix="/api/v1")
 app.include_router(ai.router, prefix="/api/v1")
 app.include_router(news.router, prefix="/api/v1")
+app.include_router(hedge.router, prefix="/api/v1")

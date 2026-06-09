@@ -109,6 +109,21 @@ export async function fetchNews(pair: string): Promise<NewsResponse> {
   return jget<NewsResponse>(endpoints.news(base, quote, day));
 }
 
+// ----- Hedge recommendation types -----
+export interface ForwardRateData { tenor: string; rate: number; pct_diff: number; }
+export interface HedgeResult {
+  signal: string;
+  short_reason: string;
+  narrative: string;
+  exposure: string;
+  as_of: string;
+  spot_rate: number;
+  change_30d: number;
+  volatility: number;
+  risk_level: string;
+  forward_rates: ForwardRateData[];
+}
+
 /** AI market commentary for the pair, plus the headlines that informed it. */
 export async function fetchCommentary(pair: string): Promise<CommentaryResult> {
   if (USE_MOCKS) return { commentary: fixtures.commentary(pair), headlines: [] };
@@ -121,4 +136,10 @@ export async function fetchCommentary(pair: string): Promise<CommentaryResult> {
   if (!r.ok) throw new Error(`POST commentary -> ${r.status}`);
   const data = (await r.json()) as Commentary;
   return { commentary: data.commentary, headlines: data.headlines ?? [] };
+}
+
+/** Spot-vs-forward recommendation: heuristic signal + CIP forward rates + AI narrative. */
+export async function fetchHedge(pair: string, exposure: string, asOf?: string): Promise<HedgeResult> {
+  const { base, quote } = splitPair(pair);
+  return jget<HedgeResult>(endpoints.hedge(base, quote, exposure, asOf));
 }
