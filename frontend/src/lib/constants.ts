@@ -12,6 +12,9 @@ export const RISK_COLORS: Record<Risk, { color: string; label: string; desc: str
 /** Rates are shown to 4 decimals; percentages to 2. */
 export const RATE_DECIMALS = 4;
 
+/** Earliest date with rate data (Frankfurter coverage start). */
+export const DATA_START = '2020-04-09';
+
 /** Ceiling (in daily %) for the volatility gauge. */
 export const VOL_MAX = 1.5;
 
