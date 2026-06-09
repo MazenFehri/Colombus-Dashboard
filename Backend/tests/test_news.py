@@ -1,4 +1,3 @@
-import time
 from datetime import date, datetime, timezone, timedelta
 from unittest.mock import patch
 from app.services import news
@@ -41,11 +40,12 @@ def test_get_headlines_fetches_caches_and_caps(db_session):
         _entry("Old news", "http://x/4", "AP", 100),  # >48h, excluded
     ]
     with patch("app.services.news.feedparser.parse", return_value=_fake_feed(entries)):
-        result = news.get_headlines(db_session, "EURUSD", date(2024, 1, 9), limit=3)
+        result = news.get_headlines(db_session, "EURUSD", date(2024, 1, 9), limit=4)
 
     assert len(result) == 3
     assert result[0].headline == "Euro climbs vs dollar"
     assert all(r.pair_tag == "EURUSD" for r in result)
+    assert all(r.headline != "Old news" for r in result)
     assert db_session.query(models.NewsItem).count() == 3
 
 

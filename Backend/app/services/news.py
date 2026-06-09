@@ -1,4 +1,5 @@
-import time
+import calendar
+import socket
 import feedparser
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import quote_plus
@@ -33,7 +34,7 @@ def _published(entry) -> datetime | None:
     pp = entry.get("published_parsed")
     if not pp:
         return None
-    return datetime.fromtimestamp(time.mktime(pp), tz=timezone.utc)
+    return datetime.fromtimestamp(calendar.timegm(pp), tz=timezone.utc)
 
 
 def _source(entry) -> str:
@@ -59,13 +60,20 @@ def get_headlines(db: Session, tag: str, on_date: date, limit: int = 3) -> list[
         return cached
     try:
         return _fetch_and_store(db, tag, on_date, limit)
-    except Exception:
+    except Exception:  # also absorbs IntegrityError from a concurrent insert racing on the UniqueConstraint (the constraint is the dedup safeguard)
         db.rollback()
         return []
 
 
 def _fetch_and_store(db: Session, tag: str, on_date: date, limit: int) -> list[models.NewsItem]:
-    feed = feedparser.parse(_feed_url(tag))
+    old_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(5)
+    try:
+        feed = feedparser.parse(_feed_url(tag))
+    finally:
+        socket.setdefaulttimeout(old_timeout)
+    # Cutoff is relative to real current time (live-only feed), so fetching for a
+    # past on_date will return nothing — by design.
     cutoff = datetime.now(timezone.utc) - timedelta(hours=_LOOKBACK_HOURS)
     items: list[models.NewsItem] = []
     for entry in feed.entries:
@@ -86,6 +94,8 @@ def _fetch_and_store(db: Session, tag: str, on_date: date, limit: int) -> list[m
         ))
         if len(items) >= limit:
             break
+    if not items:
+        return []
     for it in items:
         db.add(it)
     db.commit()
