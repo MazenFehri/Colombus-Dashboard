@@ -43,3 +43,16 @@ class AiCommentary(Base):
     commentary = Column(Text, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     __table_args__ = (UniqueConstraint("base_currency", "quote_currency", "date"),)
+
+
+class NewsItem(Base):
+    __tablename__ = "news_items"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    pair_tag = Column(Text, nullable=False)        # "EURUSD" | "GBPUSD" | "TND"
+    headline = Column(Text, nullable=False)
+    source = Column(Text, nullable=False)
+    url = Column(Text, nullable=False)
+    published_at = Column(DateTime, nullable=True)
+    fetched_date = Column(Date, nullable=False)    # dashboard date this was pulled for
+    created_at = Column(DateTime, server_default=func.now())
+    __table_args__ = (UniqueConstraint("pair_tag", "url", "fetched_date"),)
