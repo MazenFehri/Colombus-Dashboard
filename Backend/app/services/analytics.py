@@ -3,6 +3,7 @@ import numpy as np
 from datetime import date
 from sqlalchemy.orm import Session
 from app import models
+from app.services import alert_engine
 
 
 def load_rates_df(db: Session, base: str, quote: str, from_date: date, to_date: date) -> pd.DataFrame:
@@ -68,10 +69,23 @@ def calc_high_low(df: pd.DataFrame) -> dict:
     }
 
 
+def _normalized_returns(df: pd.DataFrame) -> pd.Series:
+    """Daily returns normalized by actual calendar-day gaps between observations.
+
+    Rate data has missing days (weekends, public holidays). A raw pct_change over
+    a 3-day gap would be counted as a 1-day return, inflating volatility estimates.
+    Dividing by sqrt(gap_days) rescales multi-day returns to a 1-day equivalent
+    so the rolling std is a consistent estimator of 1-day volatility.
+    """
+    day_gaps = df["date"].diff().dt.days.fillna(1).clip(lower=1)
+    raw = df["rate"].pct_change()
+    return (raw / np.sqrt(day_gaps)).dropna()
+
+
 def calc_volatility(df: pd.DataFrame) -> dict:
     if len(df) < 21:
         raise ValueError("Need at least 21 days of data for volatility")
-    pct = df["rate"].pct_change().dropna()
+    pct = _normalized_returns(df)
     rolling_stds = pct.rolling(21).std().dropna()
     # Use most recent non-zero rolling std — a flat tail (e.g. scraped constant values)
     # would otherwise mask real historical volatility.
@@ -85,10 +99,77 @@ def calc_volatility(df: pd.DataFrame) -> dict:
     }
 
 
+def build_snapshot(df: pd.DataFrame, as_of: date, quote: str) -> dict:
+    """Compute the full per-pair analysis as of a target date.
+
+    Pure function: takes an already-loaded rate DataFrame, resolves ``as_of`` to
+    the latest available trading day at or before it (handling holidays/weekends),
+    and reuses the existing metric helpers. Fields lacking enough history are
+    returned as ``None``.
+
+    Raises ``ValueError`` if no row exists at or before ``as_of``.
+    """
+    as_of_ts = pd.Timestamp(as_of)
+    eligible = df[df["date"] <= as_of_ts]
+    if eligible.empty:
+        raise ValueError(f"No data available at or before {as_of}")
+
+    sliced = eligible.reset_index(drop=True)
+    resolved_date = sliced.iloc[-1]["date"].date()
+    rate = round(float(sliced.iloc[-1]["rate"]), 6)
+
+    try:
+        d1 = calc_daily_change(sliced)["change_pct"]
+    except ValueError:
+        d1 = None
+
+    try:
+        d7 = calc_performance(sliced, "weekly")["change_pct"]
+    except ValueError:
+        d7 = None
+
+    try:
+        d30 = calc_performance(sliced, "monthly")["change_pct"]
+    except ValueError:
+        d30 = None
+
+    # High/low over the 30 days ending at resolved_date.
+    window_start = pd.Timestamp(resolved_date) - pd.Timedelta(days=30)
+    window = sliced[sliced["date"] >= window_start]
+    hl = calc_high_low(window if not window.empty else sliced)
+    high, low = hl["high"], hl["low"]
+
+    try:
+        volatility = calc_volatility(sliced)["rolling_21d_std"]
+    except ValueError:
+        volatility = None
+
+    if d1 is not None:
+        risk, _ = alert_engine.classify_risk(d1, spike=is_spike(sliced), quote=quote)
+    else:
+        risk = "low"
+
+    return {
+        "resolved_date": resolved_date,
+        "rate": rate,
+        "d1": d1,
+        "d7": d7,
+        "d30": d30,
+        "high": high,
+        "low": low,
+        "volatility": volatility,
+        "risk": risk,
+    }
+
+
 def is_spike(df: pd.DataFrame) -> bool:
     if len(df) < 64:
         return False
-    pct = df["rate"].pct_change().dropna()
+    pct = _normalized_returns(df)
+    if len(pct) < 63:
+        return False
     latest = float(pct.iloc[-1])
     sigma = float(pct.rolling(63).std().dropna().iloc[-1])
+    if sigma == 0:
+        return False
     return abs(latest) > 3 * sigma

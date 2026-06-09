@@ -74,6 +74,19 @@ class AnalysisSummaryOut(BaseModel):
     model_config = _ORM_CONFIG
 
 
+class SnapshotOut(BaseModel):
+    resolved_date: date
+    rate: float
+    d1: Optional[float]
+    d7: Optional[float]
+    d30: Optional[float]
+    high: float
+    low: float
+    volatility: Optional[float]
+    risk: str
+    model_config = _ORM_CONFIG
+
+
 class CommentaryRequest(BaseModel):
     base: str
     quote: str
@@ -94,12 +107,14 @@ class NewsArticleOut(BaseModel):
     published_at: Optional[datetime]
     language: str
     is_top: bool
+    explanation: Optional[str] = None
     model_config = _ORM_CONFIG
 
 
 class NewsResponse(BaseModel):
     base: str
     quote: str
-    date: date
+    date: date              # the date the user asked for
+    effective_date: date    # the date the returned articles are actually from (nearest-day)
     top: list[NewsArticleOut]
     more: list[NewsArticleOut]

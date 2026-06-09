@@ -5,11 +5,11 @@ import pytest
 
 
 def make_frankfurter_response(base, quote, rates_by_date):
-    """Build a mock Frankfurter API JSON response."""
-    return {
-        "base": base,
-        "rates": {d: {quote: r} for d, r in rates_by_date.items()},
-    }
+    """Build a mock Frankfurter v2 /rates response (flat list of entries)."""
+    return [
+        {"date": d, "base": base, "quote": quote, "rate": r}
+        for d, r in rates_by_date.items()
+    ]
 
 
 def test_fetch_rates_returns_dict_of_date_to_float(monkeypatch):

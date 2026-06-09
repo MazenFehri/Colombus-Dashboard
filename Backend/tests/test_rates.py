@@ -22,7 +22,7 @@ SAMPLE_RATES = {
 
 def test_get_historical_rates_returns_list(client, db_session):
     seed_rates(db_session, "USD", "TND", SAMPLE_RATES)
-    with patch("app.routers.rates.bct.fetch_rates", return_value={}):
+    with patch("app.routers.rates.frankfurter.fetch_rates", return_value={}):
         resp = client.get("/api/v1/rates/USD/TND?from_date=2024-01-02&to_date=2024-01-05")
     assert resp.status_code == 200
     data = resp.json()

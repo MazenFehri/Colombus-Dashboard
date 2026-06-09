@@ -8,12 +8,14 @@ export function ComparisonTable({
   active,
   now,
   onSelect,
+  asOf,
 }: {
   active: Pair;
   now: Date;
   onSelect: (pair: Pair) => void;
+  asOf?: string | null;
 }) {
-  const results = useAllPairs();
+  const results = useAllPairs(asOf);
 
   return (
     <Card className="table-card">
@@ -36,7 +38,8 @@ export function ComparisonTable({
           {PAIRS.map((k, i) => {
             const p = results[i]?.data;
             const chip = RISK_COLORS[p?.risk ?? 'LOW'];
-            const volPct = p ? Math.min(100, (p.volatility / VOL_MAX) * 100) : 0;
+            const vol = p?.volatility ?? null;
+            const volPct = vol !== null ? Math.min(100, (vol / VOL_MAX) * 100) : 0;
             return (
               <tr
                 key={k}
@@ -50,7 +53,7 @@ export function ComparisonTable({
                   </span>
                 </td>
                 <td className="tnum mono">{p ? fmtRate(p.rate, RATE_DECIMALS) : '—'}</td>
-                <td>{p ? <Change value={p.d1} /> : '—'}</td>
+                <td>{p && p.d1 !== null ? <Change value={p.d1} /> : '—'}</td>
                 <td>
                   <span className="vol-bar">
                     <span style={{ width: `${volPct.toFixed(0)}%` }} />
@@ -59,7 +62,7 @@ export function ComparisonTable({
                     className="mono tnum"
                     style={{ marginLeft: 8, color: 'var(--text-mute)', fontSize: 12 }}
                   >
-                    {(p?.volatility ?? 0).toFixed(2)}%
+                    {vol !== null ? `${vol.toFixed(2)}%` : '—'}
                   </span>
                 </td>
                 <td>

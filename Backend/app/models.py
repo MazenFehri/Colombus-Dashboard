@@ -57,6 +57,7 @@ class NewsArticle(Base):
     published_at = Column(DateTime, nullable=True)
     language = Column(Text, nullable=False, default="")
     relevance = Column(Float, nullable=True)
+    explanation = Column(Text, nullable=True)
     is_top = Column(Boolean, nullable=False, default=False)
     fetched_at = Column(DateTime, server_default=func.now())
     __table_args__ = (UniqueConstraint("base_currency", "quote_currency", "date", "url"),)

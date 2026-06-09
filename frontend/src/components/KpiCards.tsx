@@ -3,13 +3,16 @@ import { RISK_COLORS, RATE_DECIMALS, type Pair } from '../lib/constants';
 import { fmtRate } from '../lib/format';
 import { Card, Change, riskVar } from './ui';
 
-export function KpiCards({ pair }: { pair: Pair }) {
-  const { data } = usePairAnalysis(pair);
+export function KpiCards({ pair, asOf }: { pair: Pair; asOf?: string | null }) {
+  const { data } = usePairAnalysis(pair, asOf);
   const color = data ? RISK_COLORS[data.risk].color : RISK_COLORS.LOW.color;
   const style = riskVar(color);
 
-  const rate = (v: number | undefined) =>
-    v === undefined ? '—' : fmtRate(v, RATE_DECIMALS);
+  const rate = (v: number | null | undefined) =>
+    v === undefined || v === null ? '—' : fmtRate(v, RATE_DECIMALS);
+
+  const change = (v: number | null | undefined) =>
+    v === undefined || v === null ? '—' : <Change value={v} />;
 
   return (
     <section className="kpi-grid">
@@ -23,19 +26,19 @@ export function KpiCards({ pair }: { pair: Pair }) {
 
       <Card className="kpi-card" style={style}>
         <span className="kpi-label">1-Day Change</span>
-        <span className="kpi-value tnum">{data ? <Change value={data.d1} /> : '—'}</span>
+        <span className="kpi-value tnum">{data ? change(data.d1) : '—'}</span>
         <span className="kpi-foot"><span style={{ color: 'var(--text-dim)' }}>vs. yesterday</span></span>
       </Card>
 
       <Card className="kpi-card" style={style}>
         <span className="kpi-label">7-Day Change</span>
-        <span className="kpi-value tnum">{data ? <Change value={data.d7} /> : '—'}</span>
+        <span className="kpi-value tnum">{data ? change(data.d7) : '—'}</span>
         <span className="kpi-foot"><span style={{ color: 'var(--text-dim)' }}>vs. 7 days ago</span></span>
       </Card>
 
       <Card className="kpi-card" style={style}>
         <span className="kpi-label">30-Day Change</span>
-        <span className="kpi-value tnum">{data ? <Change value={data.d30} /> : '—'}</span>
+        <span className="kpi-value tnum">{data ? change(data.d30) : '—'}</span>
         <span className="kpi-foot"><span style={{ color: 'var(--text-dim)' }}>vs. 30 days ago</span></span>
       </Card>
 

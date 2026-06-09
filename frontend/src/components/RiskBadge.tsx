@@ -5,15 +5,16 @@ import { riskVar } from './ui';
 
 function explain(risk: 'LOW' | 'MEDIUM' | 'HIGH', d1: number): string {
   const abs = Math.abs(d1).toFixed(2);
-  if (risk === 'HIGH') return `Daily movement of ${abs}% exceeded the 1.00% high-risk threshold.`;
-  if (risk === 'MEDIUM') return `Daily movement of ${abs}% is approaching the 1.00% high-risk threshold.`;
-  return `Daily movement of ${abs}% is well within the 1.00% low-risk threshold.`;
+  if (risk === 'HIGH') return `Daily movement of ${abs}% signals elevated market risk.`;
+  if (risk === 'MEDIUM') return `Daily movement of ${abs}% indicates moderate market activity.`;
+  return `Daily movement of ${abs}% is within normal range.`;
 }
 
-export function RiskBadge({ pair }: { pair: Pair }) {
-  const { data } = usePairAnalysis(pair);
+export function RiskBadge({ pair, asOf }: { pair: Pair; asOf?: string | null }) {
+  const { data } = usePairAnalysis(pair, asOf);
   const risk = data?.risk ?? 'LOW';
   const color = RISK_COLORS[risk].color;
+  const hasD1 = data != null && data.d1 != null;
 
   return (
     <section className="card risk-card" style={riskVar(color)}>
@@ -24,9 +25,11 @@ export function RiskBadge({ pair }: { pair: Pair }) {
           Current alert: <span className="accent">{risk}</span>
         </h2>
         <p className="risk-detail">
-          {data
-            ? `Daily movement: ${fmtPct(data.d1)}. ${explain(risk, data.d1)}`
-            : 'Loading risk assessment…'}
+          {!data
+            ? 'Loading risk assessment…'
+            : hasD1
+              ? `Daily movement: ${fmtPct(data.d1!)}. ${explain(risk, data.d1!)}`
+              : 'Insufficient history to assess daily movement.'}
         </p>
       </div>
     </section>

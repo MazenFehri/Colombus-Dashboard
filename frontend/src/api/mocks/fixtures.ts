@@ -3,7 +3,7 @@ import { isoDay } from '../../lib/dates';
 
 // Hardcoded fallback data so the UI can run without a backend
 // (enable with VITE_USE_MOCKS=true). Numbers mirror the design spec.
-const DATA: Record<string, PairAnalysis & { ai: string }> = {
+const DATA: Record<string, Omit<PairAnalysis, 'resolvedDate'> & { ai: string }> = {
   'EUR/USD': {
     rate: 1.0842, d1: 0.31, d7: -0.82, d30: 1.24, high: 1.0951, low: 1.0701, volatility: 0.42, risk: 'LOW',
     ai: 'The Euro shows modest daily appreciation against the US Dollar, supported by stable ECB policy signals. Volatility remains within normal bounds at 0.42%, indicating low short-term FX risk for European-exposed corporate clients. Companies with USD payment obligations may consider this a favorable window for hedging.',
@@ -34,10 +34,10 @@ function genHistory(pair: string, days: number): RatePoint[] {
   const p = DATA[pair];
   const seed = [...pair].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) + days;
   const rand = seedRand(seed);
-  const start = p.rate / (1 + p.d30 / 100);
+  const start = p.rate / (1 + (p.d30 ?? 0) / 100);
   const end = p.rate;
   const step = (end - start) / (days - 1);
-  const sigma = (p.volatility / 100) * p.rate * 0.55;
+  const sigma = ((p.volatility ?? 0) / 100) * p.rate * 0.55;
   const out: RatePoint[] = [];
   let val = start;
   const today = new Date();
@@ -54,7 +54,7 @@ function genHistory(pair: string, days: number): RatePoint[] {
 export const fixtures = {
   analysis(pair: string): PairAnalysis {
     const { ai: _ai, ...rest } = DATA[pair];
-    return rest;
+    return { ...rest, resolvedDate: isoDay(new Date()) };
   },
   commentary(pair: string): string {
     return DATA[pair].ai;
@@ -67,13 +67,16 @@ export const fixtures = {
       base: pair.split('/')[0],
       quote: pair.split('/')[1],
       date: day,
+      effective_date: day,
       top: [
         { title: `${pair} steadies as central banks hold`, url: 'https://example.com/1',
-          source: 'example.com', published_at: `${day}T10:00:00`, language: 'english', is_top: true },
+          source: 'example.com', published_at: `${day}T10:00:00`, language: 'english', is_top: true,
+          explanation: `The latest moves around ${pair} were driven by central-bank signals, nudging the pair this session.` },
       ],
       more: [
         { title: `Markets weigh ${pair} outlook`, url: 'https://example.com/2',
-          source: 'example.com', published_at: `${day}T08:00:00`, language: 'english', is_top: false },
+          source: 'example.com', published_at: `${day}T08:00:00`, language: 'english', is_top: false,
+          explanation: null },
       ],
     };
   },

@@ -1,7 +1,17 @@
 from datetime import date, datetime, timedelta
+from unittest.mock import patch
+import pytest
 from app import models
 from app.services import news_service
 from app.services.news_providers.base import Article
+
+
+@pytest.fixture(autouse=True)
+def _no_network(monkeypatch):
+    # Keep the cache-behaviour tests offline: no real scraping or Groq calls.
+    monkeypatch.setattr("app.services.article_fetcher.fetch_article_text", lambda url: None)
+    monkeypatch.setattr("app.services.news_explainer.explain_article",
+                        lambda *a, **k: None)
 
 
 def _arts(n):
@@ -55,3 +65,44 @@ def test_today_refetches_when_stale(db_session):
     db_session.commit()
     news_service.get_or_fetch_news(db_session, "EUR", "USD", today, providers=[p])
     assert p.calls == 2  # refetched
+
+
+class DateAwareProvider:
+    """Returns articles only for specific dates, [] otherwise."""
+    name = "dateaware"
+    def __init__(self, dates_with_news): self.dates = set(dates_with_news)
+    def fetch(self, base, quote, on_date):
+        return _arts(3) if on_date in self.dates else []
+
+
+def test_nearest_day_exact_match(db_session):
+    on = date(2026, 6, 5)
+    p = DateAwareProvider([on])
+    rows, eff = news_service.get_news_nearest(db_session, "EUR", "USD", on, providers=[p])
+    assert len(rows) == 3 and eff == on
+
+
+def test_nearest_day_falls_back_to_closest(db_session):
+    on = date(2026, 6, 5)
+    p = DateAwareProvider([date(2026, 6, 3)])  # nothing on on_date; news 2 days earlier
+    rows, eff = news_service.get_news_nearest(db_session, "EUR", "USD", on, window=3, providers=[p])
+    assert len(rows) == 3 and eff == date(2026, 6, 3)
+
+
+def test_nearest_day_empty_when_nothing_in_window(db_session):
+    on = date(2026, 6, 5)
+    p = DateAwareProvider([date(2026, 1, 1)])  # far outside the ±window
+    rows, eff = news_service.get_news_nearest(db_session, "EUR", "USD", on, window=3, providers=[p])
+    assert rows == [] and eff == on
+
+
+def test_top_articles_get_explanations(db_session):
+    p = FakeProvider(_arts(5))
+    with patch("app.services.article_fetcher.fetch_article_text", return_value="Full article body text."), \
+         patch("app.services.news_explainer.explain_article", return_value="Explained: affects the pair."):
+        out = news_service.get_or_fetch_news(db_session, "EUR", "USD", date(2026, 6, 5), providers=[p])
+    top = [a for a in out if a.is_top]
+    more = [a for a in out if not a.is_top]
+    assert len(top) == news_service.TOP_N
+    assert all(a.explanation == "Explained: affects the pair." for a in top)
+    assert all(a.explanation is None for a in more)

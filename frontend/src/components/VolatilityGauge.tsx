@@ -4,8 +4,8 @@ import { Card, CardHead, riskVar } from './ui';
 
 const ARC = 267; // length of the semicircle arc (π * r, r = 85)
 
-export function VolatilityGauge({ pair }: { pair: Pair }) {
-  const { data } = usePairAnalysis(pair);
+export function VolatilityGauge({ pair, asOf }: { pair: Pair; asOf?: string | null }) {
+  const { data } = usePairAnalysis(pair, asOf);
   const vol = data?.volatility ?? 0;
   const risk = data?.risk ?? 'LOW';
   const color = RISK_COLORS[risk].color;

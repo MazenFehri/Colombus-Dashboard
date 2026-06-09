@@ -1,9 +1,10 @@
 import pandas as pd
 import numpy as np
+import pytest
 from datetime import date, timedelta
 from app.services.analytics import (
     calc_daily_change, calc_performance, calc_high_low,
-    calc_volatility, is_spike,
+    calc_volatility, is_spike, build_snapshot,
 )
 
 
@@ -68,3 +69,59 @@ def test_is_spike_true_for_large_jump():
     rates = [3.0] * 65 + [3.0, 3.0, 3.0, 6.0]  # last day: huge spike
     df = make_df(rates)
     assert is_spike(df)
+
+
+# ----- build_snapshot -----
+
+def test_build_snapshot_mid_history_all_fields():
+    # 60 days of gently varying data; resolve to the last day.
+    rates = [3.0 + 0.01 * np.sin(i * 0.4) for i in range(60)]
+    df = make_df(rates, start=date(2024, 1, 1))
+    as_of = date(2024, 1, 1) + timedelta(days=59)
+    snap = build_snapshot(df, as_of, "TND")
+    assert snap["resolved_date"] == as_of
+    assert snap["rate"] == round(float(rates[-1]), 6)
+    assert snap["d1"] is not None
+    assert snap["d7"] is not None
+    assert snap["d30"] is not None
+    assert snap["high"] is not None
+    assert snap["low"] is not None
+    assert snap["volatility"] is not None
+    assert snap["risk"] in ("low", "medium", "high")
+
+
+def test_build_snapshot_insufficient_history_nulls():
+    # Only 10 days of data -> volatility None (needs 21).
+    rates = [3.0 + i * 0.001 for i in range(10)]
+    df = make_df(rates, start=date(2024, 1, 1))
+    as_of = date(2024, 1, 1) + timedelta(days=9)
+    snap = build_snapshot(df, as_of, "TND")
+    assert snap["resolved_date"] == as_of
+    assert snap["volatility"] is None
+    assert snap["d1"] is not None  # 2 rows present
+
+
+def test_build_snapshot_single_row_d1_none_risk_low():
+    df = make_df([3.0], start=date(2024, 1, 1))
+    snap = build_snapshot(df, date(2024, 1, 1), "TND")
+    assert snap["d1"] is None
+    assert snap["d7"] is None
+    assert snap["d30"] is None
+    assert snap["volatility"] is None
+    assert snap["risk"] == "low"
+    assert snap["rate"] == 3.0
+
+
+def test_build_snapshot_holiday_falls_back_to_prior_trading_day():
+    # Weekday gap: data for Jan 1..3 and Jan 8.., picking Jan 5 (a hole) resolves to Jan 3.
+    dates = [date(2024, 1, 1), date(2024, 1, 2), date(2024, 1, 3), date(2024, 1, 8)]
+    df = pd.DataFrame({"date": pd.to_datetime(dates), "rate": [3.0, 3.1, 3.2, 3.3]})
+    snap = build_snapshot(df, date(2024, 1, 5), "TND")
+    assert snap["resolved_date"] == date(2024, 1, 3)
+    assert snap["rate"] == 3.2
+
+
+def test_build_snapshot_no_data_before_as_of_raises():
+    df = make_df([3.0, 3.1], start=date(2024, 1, 10))
+    with pytest.raises(ValueError):
+        build_snapshot(df, date(2024, 1, 1), "TND")
