@@ -1,7 +1,7 @@
 import httpx
 from datetime import date
 
-FRANKFURTER_BASE = "https://api.frankfurter.dev/v1"
+FRANKFURTER_BASE = "https://api.frankfurter.dev/v2"
 FAWAZAHMED_BASE = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1"
 
 
