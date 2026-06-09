@@ -18,7 +18,7 @@ class MarketContext:
     trend_direction: str | None
     vol_regime: str | None
     momentum: float | None
-    headlines: list  # list[models.NewsItem]
+    headlines: list[models.NewsItem]
 
 
 def build_market_context(db: Session, base: str, quote: str, target_date: date) -> MarketContext:

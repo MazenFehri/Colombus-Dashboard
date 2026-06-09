@@ -63,7 +63,7 @@ def test_commentary_returns_502_on_groq_failure(client, db_session):
     assert resp.status_code == 502
 
 
-from app.services import ai_service, news as news_service
+from app.services import ai_service
 
 
 def test_build_prompt_includes_headlines_and_omits_none(db_session):
@@ -76,6 +76,10 @@ def test_build_prompt_includes_headlines_and_omits_none(db_session):
     prompt = ai_service.build_prompt(ctx)
     assert "Dinar steady (TAP)" in prompt
     assert "Pair: USD/TND" in prompt
+    # Only 9 rows of history: trend (needs 30) and vol regime (needs 111) are None,
+    # so their lines must be omitted from the prompt.
+    assert "Trend (MA7" not in prompt
+    assert "Volatility regime" not in prompt
 
 
 def test_commentary_endpoint_returns_headlines(client, db_session):
