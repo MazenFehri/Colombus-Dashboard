@@ -204,6 +204,11 @@ def build_snapshot(df: pd.DataFrame, as_of: date, quote: str) -> dict:
     except ValueError:
         volatility = None
 
+    trend_info = calc_trend(sliced)
+    trend = trend_info["direction"] if trend_info else None
+    vol_regime = calc_vol_regime(sliced)
+    momentum = calc_momentum(sliced)
+
     if d1 is not None:
         risk, _ = alert_engine.classify_risk(d1, spike=is_spike(sliced), quote=quote)
     else:
@@ -218,6 +223,9 @@ def build_snapshot(df: pd.DataFrame, as_of: date, quote: str) -> dict:
         "high": high,
         "low": low,
         "volatility": volatility,
+        "trend": trend,
+        "vol_regime": vol_regime,
+        "momentum": momentum,
         "risk": risk,
     }
 

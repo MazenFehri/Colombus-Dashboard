@@ -83,6 +83,9 @@ class SnapshotOut(BaseModel):
     high: float
     low: float
     volatility: Optional[float]
+    trend: Optional[str]
+    vol_regime: Optional[str]
+    momentum: Optional[float]
     risk: str
     model_config = _ORM_CONFIG
 

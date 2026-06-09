@@ -206,3 +206,18 @@ def test_calc_trend_exactly_30_rows():
 
 def test_calc_trend_zero_rate_guard():
     assert calc_trend(make_df([0.0 for _ in range(30)])) is None
+
+
+def test_build_snapshot_includes_signals():
+    df = make_df([3.0 + i * 0.01 for i in range(120)])
+    snap = build_snapshot(df, date(2024, 1, 2) + timedelta(days=119), "USD")
+    assert "trend" in snap and snap["trend"] in {"bullish", "bearish", "neutral"}
+    assert "vol_regime" in snap and snap["vol_regime"] in {"elevated", "normal", "compressed"}
+    assert "momentum" in snap  # float or None
+
+
+def test_build_snapshot_signals_none_near_start():
+    df = make_df([3.0, 3.01, 3.02, 3.03, 3.05])
+    snap = build_snapshot(df, date(2024, 1, 2) + timedelta(days=4), "USD")
+    assert snap["trend"] is None
+    assert snap["vol_regime"] is None
