@@ -15,4 +15,5 @@ export const endpoints = {
     `${BASE}/analysis/${b}/${q}/snapshot${asOf ? `?as_of=${asOf}` : ''}`,
   alert: (b: string, q: string) => `${BASE}/alerts/${b}/${q}`,
   commentary: () => `${BASE}/ai/commentary`,
+  news: (b: string, q: string, date: string) => `${BASE}/news/${b}/${q}?date=${date}`,
 };

@@ -1,4 +1,4 @@
-import type { PairAnalysis, RatePoint } from '../client';
+import type { PairAnalysis, RatePoint, NewsResponse } from '../client';
 import { isoDay } from '../../lib/dates';
 
 // Hardcoded fallback data so the UI can run without a backend
@@ -65,5 +65,38 @@ export const fixtures = {
   },
   history(pair: string, days: number): RatePoint[] {
     return genHistory(pair, days);
+  },
+  news(pair: string, day: string): NewsResponse {
+    const [base, quote] = pair.split('/');
+    return {
+      base,
+      quote,
+      date: day,
+      top: [
+        {
+          headline: `${pair} gains on central bank policy divergence`,
+          source: 'CurrencyNews.co.uk',
+          url: 'https://example.com/news/1',
+          published_at: `${day}T08:00:00`,
+          explanation: `The ${pair} exchange rate edged higher as markets priced in diverging monetary policy paths between the two central banks. The ${base} benefited from hawkish commentary, while the ${quote} faced pressure from softer economic data. Clients with ${quote}-denominated obligations may wish to review their hedging strategies.`,
+        },
+        {
+          headline: `${base} holds steady ahead of key data releases`,
+          source: 'Reuters',
+          url: 'https://example.com/news/2',
+          published_at: `${day}T06:30:00`,
+          explanation: null,
+        },
+      ],
+      more: [
+        {
+          headline: `${quote} weakens amid broader risk-off sentiment`,
+          source: 'Bloomberg',
+          url: 'https://example.com/news/3',
+          published_at: `${day}T05:00:00`,
+          explanation: null,
+        },
+      ],
+    };
   },
 };

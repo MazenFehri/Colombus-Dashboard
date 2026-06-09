@@ -1,8 +1,25 @@
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 _ORM_CONFIG = {"from_attributes": True}
+
+
+class NewsArticleOut(BaseModel):
+    headline: str
+    source: str
+    url: str
+    published_at: Optional[datetime] = None
+    explanation: Optional[str] = None  # Groq "why it moved" paragraph (top items only)
+    model_config = _ORM_CONFIG
+
+
+class NewsResponse(BaseModel):
+    base: str
+    quote: str
+    date: date
+    top: list[NewsArticleOut]   # enriched with explanations
+    more: list[NewsArticleOut]  # plain headline links
 
 
 class CurrencyOut(BaseModel):

@@ -54,5 +54,6 @@ class NewsItem(Base):
     url = Column(Text, nullable=False)
     published_at = Column(DateTime, nullable=True)
     fetched_date = Column(Date, nullable=False)    # dashboard date this was pulled for
+    explanation = Column(Text, nullable=True)      # cached Groq "why it moved" paragraph (top items)
     created_at = Column(DateTime, server_default=func.now())
     __table_args__ = (UniqueConstraint("pair_tag", "url", "fetched_date"),)

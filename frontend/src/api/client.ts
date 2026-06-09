@@ -12,6 +12,20 @@ export interface RatePoint { date: string; rate: number; }
 interface Commentary { commentary: string; date: string; cached: boolean; headlines: Headline[]; }
 export interface Headline { headline: string; source: string; url: string; }
 export interface CommentaryResult { commentary: string; headlines: Headline[]; }
+export interface NewsArticle {
+  headline: string;
+  source: string;
+  url: string;
+  published_at: string | null;
+  explanation: string | null;
+}
+export interface NewsResponse {
+  base: string;
+  quote: string;
+  date: string;
+  top: NewsArticle[];
+  more: NewsArticle[];
+}
 
 // Raw snapshot response (mirrors app/schemas.py SnapshotOut).
 interface Snapshot {
@@ -85,6 +99,14 @@ export async function fetchHistory(pair: string, days: number, asOf?: string): P
   const { base, quote } = splitPair(pair);
   const { from, to } = rangeFrom(days, asOf ? parseDay(asOf) : undefined);
   return jget<RatePoint[]>(endpoints.rates(base, quote, from, to));
+}
+
+/** Latest news articles for the pair (live/today, not time-travelled). */
+export async function fetchNews(pair: string): Promise<NewsResponse> {
+  const { base, quote } = splitPair(pair);
+  const day = isoDay(new Date());
+  if (USE_MOCKS) return fixtures.news(pair, day) as NewsResponse;
+  return jget<NewsResponse>(endpoints.news(base, quote, day));
 }
 
 /** AI market commentary for the pair, plus the headlines that informed it. */
