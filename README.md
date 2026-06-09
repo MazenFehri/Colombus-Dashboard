@@ -92,7 +92,7 @@ python scripts/seed_currencies.py
 python scripts/seed_tnd_rates.py   # loads historical TND data from CSV
 
 # Start the API server
-uvicorn app.main:app --reload --port 8000
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
 The API will be available at `http://localhost:8000`. Interactive docs: `http://localhost:8000/docs`.

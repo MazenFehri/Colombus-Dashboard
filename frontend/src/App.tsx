@@ -12,6 +12,7 @@ import { RateChart } from './components/RateChart';
 import { VolatilityGauge } from './components/VolatilityGauge';
 import { ComparisonTable } from './components/ComparisonTable';
 import { MarketIntelligence } from './components/MarketIntelligence';
+import { HedgeAdvisor } from './components/HedgeAdvisor';
 import { News } from './components/News';
 import { PAIRS, type Pair } from './lib/constants';
 
@@ -63,6 +64,7 @@ export default function App() {
         <ComparisonTable active={pair} now={now} onSelect={setPair} asOf={asOf} />
 
         <MarketIntelligence pair={pair} now={now} />
+        <HedgeAdvisor pair={pair} asOf={asOf} />
         <News pair={pair} />
       </main>
 

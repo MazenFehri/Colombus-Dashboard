@@ -4,8 +4,9 @@
 
 | Pair | Source | Notes |
 |------|--------|-------|
-| EUR/USD, GBP/USD | Frankfurter API | Free, reliable, business-day coverage |
-| USD/TND, EUR/TND | BCT (Banque Centrale de Tunisie) scraper | HTML table scrape; weekends skipped; holidays may be missing |
+| EUR/USD, GBP/USD, USD/TND, EUR/TND | Frankfurter API (v2 `/rates`) | Free, reliable, business-day coverage; full TND history back to ~2000 |
+
+All four pairs now come from **Frankfurter v2** (`https://api.frankfurter.dev/v2/rates`). The earlier BCT (Banque Centrale de Tunisie) HTML scraper and the CSV seed were removed once Frankfurter v2 was confirmed to provide continuous, aligned TND history. A single-date `fawazahmed` lookup remains only as a last-resort fallback.
 
 Data is fetched on demand and cached in the database. A range is re-fetched only when fewer than 80% of expected business days are present.
 
@@ -27,7 +28,7 @@ Requires at least 2 data points. Returns the raw rate, previous rate, and rounde
 
 ### Normalization for data gaps
 
-BCT scraping misses public holidays and occasional failures, leaving calendar-day gaps in the database. A raw `pct_change()` on a gapped series would treat a 3-day return as a 1-day return, inflating volatility. Returns are normalized before any rolling calculation:
+Markets are closed on weekends and public holidays, leaving calendar-day gaps in the database. A raw `pct_change()` on a gapped series would treat a 3-day return (e.g. across a weekend) as a 1-day return, inflating volatility. Returns are normalized before any rolling calculation:
 
 ```
 normalized_return = raw_return / sqrt(gap_days)
@@ -37,7 +38,7 @@ This rescales multi-day returns to a 1-day equivalent so the rolling standard de
 
 ### Rolling 21-day std
 
-The rolling standard deviation is computed over a 21-observation window of normalized returns. The most recent **non-zero** value is used — a flat tail (e.g. a constant scraped value repeated over several days) would otherwise mask real historical volatility.
+The rolling standard deviation is computed over a 21-observation window of normalized returns. The most recent **non-zero** value is used — a flat tail (a constant rate repeated over several days) would otherwise mask real historical volatility.
 
 ### Annualized volatility
 
@@ -70,9 +71,49 @@ If any requirement is unmet, `is_spike` returns `False`.
 
 ---
 
+## Directional & Regime Signals
+
+These are computed alongside the risk metrics (in `build_snapshot`, so they are **time-travel aware**) and surfaced as UI badges and as context for the AI commentary. They are **interpretation aids — not inputs to the risk label**.
+
+### Trend (MA7 vs MA30)
+
+```
+ma7  = mean(last 7 rates)
+ma30 = mean(last 30 rates)
+neutral  if |ma7 - ma30| / ma30 < 0.001
+bullish  if ma7 > ma30
+bearish  if ma7 < ma30
+```
+
+Requires ≥ 30 rows; `None` otherwise (and `None` if either MA is NaN).
+
+### Volatility regime
+
+Compares the **current** 21-day rolling volatility to the average of that rolling series over the last 90 observations:
+
+```
+elevated    if current > 1.5 × avg90
+compressed  if current < 0.6 × avg90
+normal      otherwise
+```
+
+Requires ≥ 90 rolling-std observations (≈ 111 input rows); `None` otherwise. Returns `None` on a flat/zero current window (treated as a data artifact, consistent with the volatility calc).
+
+### Momentum
+
+Acceleration of the daily return — is the move speeding up or reversing?
+
+```
+momentum = (return_today - return_yesterday) / |return_yesterday|
+```
+
+Requires ≥ 3 rows; `None` if yesterday's return is ~0.
+
+---
+
 ## Risk Classification
 
-Risk level is derived from the daily change percentage and the spike flag. Thresholds differ by quote currency because TND is a BCT-managed currency that moves an order of magnitude less than major pairs.
+Risk level is a **single-factor classifier** — it is derived from the daily change percentage and the spike flag only. Trend, volatility, and the regime signals above are shown as context but do **not** change the risk label. Thresholds differ by quote currency because TND is a managed currency that moves an order of magnitude less than major pairs.
 
 ### Thresholds
 
@@ -99,6 +140,14 @@ is_spike?
 ### Why separate TND thresholds?
 
 The TND is a managed/pegged currency controlled by the BCT. Typical daily moves are 0.01–0.15 %, vs. 0.3–1 % for EUR/USD or GBP/USD. Using major-pair thresholds for TND would cause it to permanently read LOW, making the risk signal meaningless for Tunisian dinar exposure.
+
+### Consistency across surfaces
+
+The same `classify_risk(change_pct, spike, quote)` is used everywhere the risk appears — the snapshot/badge, the `/analysis/summary` table, and the **AI commentary**. The `quote` argument is passed in every path so the per-quote thresholds always apply (previously the AI commentary omitted `quote`, mislabeling TND risk against major-pair thresholds — now fixed).
+
+### Composite risk index — evaluated, deferred
+
+A multi-factor risk *index* (blending daily shock + volatility regime + an abnormality/z-score into one number) was prototyped (`risk.py`) and evaluated. It captured a good idea — risk as more than today's move — but had defects: a broken PCA weighting, no return value, EUR/USD-scaled ceilings that under-score TND, and a non-deterministic score that drifts as history grows. It was **not adopted**. A distilled, deterministic version (fixed weights, per-quote scaling) is recorded as a follow-on in `research_optimization.md`; the prototype file has been removed. The current label remains the single-factor classifier above.
 
 ---
 

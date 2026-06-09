@@ -16,4 +16,6 @@ export const endpoints = {
   alert: (b: string, q: string) => `${BASE}/alerts/${b}/${q}`,
   commentary: () => `${BASE}/ai/commentary`,
   news: (b: string, q: string, date: string) => `${BASE}/news/${b}/${q}?date=${date}`,
+  hedge: (b: string, q: string, exposure: string, asOf?: string) =>
+    `${BASE}/hedge/${b}/${q}/recommendation?exposure=${exposure}${asOf ? `&as_of=${asOf}` : ''}`,
 };
