@@ -61,7 +61,7 @@ export default function App() {
         <ComparisonTable active={pair} now={now} onSelect={setPair} asOf={asOf} />
 
         <MarketIntelligence pair={pair} now={now} />
-        <News pair={pair} />
+        <News pair={pair} asOf={asOf} />
       </main>
 
       <Footer />

@@ -67,6 +67,7 @@ export const fixtures = {
       base: pair.split('/')[0],
       quote: pair.split('/')[1],
       date: day,
+      effective_date: day,
       top: [
         { title: `${pair} steadies as central banks hold`, url: 'https://example.com/1',
           source: 'example.com', published_at: `${day}T10:00:00`, language: 'english', is_top: true,

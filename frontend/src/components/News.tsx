@@ -2,6 +2,7 @@ import { useNews } from '../hooks/useNews';
 import { type Pair } from '../lib/constants';
 import type { NewsArticle } from '../api/client';
 import { Card, CardHead } from './ui';
+import { isoDay } from '../lib/dates';
 
 function HeadlineItem({ a }: { a: NewsArticle }) {
   return (
@@ -24,8 +25,8 @@ function ExplainedItem({ a }: { a: NewsArticle }) {
   );
 }
 
-export function News({ pair }: { pair: Pair }) {
-  const { data, isLoading, isError } = useNews(pair);
+export function News({ pair, asOf }: { pair: Pair; asOf: string | null }) {
+  const { data, isLoading, isError } = useNews(pair, asOf);
   const top = data?.top ?? [];
   const more = data?.more ?? [];
   const empty = !isLoading && !isError && top.length === 0 && more.length === 0;
@@ -36,6 +37,9 @@ export function News({ pair }: { pair: Pair }) {
       {isLoading && <p className="news-status">Loading news…</p>}
       {isError && <p className="news-status">News is temporarily unavailable.</p>}
       {empty && <p className="news-status">No news found for this date.</p>}
+      {data && data.effective_date !== (asOf ?? isoDay(new Date())) && (top.length > 0 || more.length > 0) && (
+        <p className="news-status">Closest available news: {data.effective_date}</p>
+      )}
       {top.length > 0 && (
         <>
           <h4 className="news-subhead">Why it moved</h4>

@@ -23,6 +23,7 @@ export interface NewsResponse {
   base: string;
   quote: string;
   date: string;
+  effective_date: string;
   top: NewsArticle[];
   more: NewsArticle[];
 }
