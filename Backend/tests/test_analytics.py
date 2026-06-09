@@ -177,3 +177,32 @@ def test_calc_momentum_value():
     result = calc_momentum(df)
     assert result is not None
     assert result > 0
+
+
+def test_calc_vol_regime_normal():
+    rng = np.random.default_rng(2)
+    steady = list(3.0 + np.cumsum(rng.normal(0, 0.003, 140)))
+    assert calc_vol_regime(make_df(steady)) == "normal"
+
+
+def test_calc_vol_regime_compressed():
+    rng = np.random.default_rng(1)
+    volatile = list(3.0 + np.cumsum(rng.normal(0, 0.01, 110)))
+    calm = list(volatile[-1] + np.cumsum(rng.normal(0, 0.0001, 25)))
+    assert calc_vol_regime(make_df(volatile + calm)) == "compressed"
+
+
+def test_calc_vol_regime_boundary_rows():
+    rates = [3.0 + i * 0.001 for i in range(110)]
+    assert calc_vol_regime(make_df(rates)) is None          # 110 rows -> 89 rolling obs
+    rates2 = [3.0 + i * 0.001 for i in range(111)]
+    assert calc_vol_regime(make_df(rates2)) is not None      # 111 rows -> 90 rolling obs
+
+
+def test_calc_trend_exactly_30_rows():
+    df = make_df([3.0 + i * 0.01 for i in range(30)])
+    assert calc_trend(df) is not None
+
+
+def test_calc_trend_zero_rate_guard():
+    assert calc_trend(make_df([0.0 for _ in range(30)])) is None
