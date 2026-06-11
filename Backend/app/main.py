@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 from app.database import engine
 from app import models
-from app.routers import currencies, rates, alerts, analysis, ai, news, hedge
+from app.routers import currencies, rates, alerts, analysis, ai, news, hedge, auth
 
 
 def _heal_schema() -> None:
@@ -35,6 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api/v1")
 app.include_router(currencies.router, prefix="/api/v1")
 app.include_router(rates.router, prefix="/api/v1")
 app.include_router(alerts.router, prefix="/api/v1")
