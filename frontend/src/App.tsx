@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from './auth/AuthContext';
+import { LoginPage } from './components/auth/LoginPage';
+import { SignupPage } from './components/auth/SignupPage';
 import { BrandBar } from './components/layout/BrandBar';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
@@ -17,6 +20,8 @@ import { News } from './components/News';
 import { PAIRS, type Pair } from './lib/constants';
 
 export default function App() {
+  const { user, ready } = useAuth();
+  const [authView, setAuthView] = useState<'login' | 'signup'>('login');
   const [pair, setPair] = useState<Pair>(PAIRS[0]);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [now, setNow] = useState<Date>(new Date());
@@ -33,6 +38,13 @@ export default function App() {
   useEffect(() => {
     document.body.classList.toggle('light', theme === 'light');
   }, [theme]);
+
+  if (!ready) return null;
+  if (!user) {
+    return authView === 'login'
+      ? <LoginPage onSwitch={() => setAuthView('signup')} />
+      : <SignupPage onSwitch={() => setAuthView('login')} />;
+  }
 
   return (
     <>

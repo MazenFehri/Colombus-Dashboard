@@ -18,4 +18,8 @@ export const endpoints = {
   news: (b: string, q: string, date: string) => `${BASE}/news/${b}/${q}?date=${date}`,
   hedge: (b: string, q: string, exposure: string, asOf?: string) =>
     `${BASE}/hedge/${b}/${q}/recommendation?exposure=${exposure}${asOf ? `&as_of=${asOf}` : ''}`,
+  register: () => `${BASE}/auth/register`,
+  login: () => `${BASE}/auth/login`,
+  me: () => `${BASE}/auth/me`,
+  emailNews: () => `${BASE}/news/email`,
 };

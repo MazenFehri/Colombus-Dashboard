@@ -68,3 +68,24 @@ body {
 }
 .mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; }
 .tnum { font-variant-numeric: tabular-nums; }
+
+/* =========================================================
+   Auth pages
+   ========================================================= */
+.auth-shell { min-height: 100vh; display: grid; place-items: center; background: var(--bg); }
+.auth-card { display: flex; flex-direction: column; gap: 12px; width: 320px;
+  padding: 32px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+.auth-card h1 { color: var(--text); margin: 0; font-size: 22px; }
+.auth-sub { color: var(--text-mute); margin: 0 0 8px; font-size: 14px; }
+.auth-card input { padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--bg-soft); color: var(--text); font: inherit; transition: border-color var(--t); }
+.auth-card input:focus { outline: none; border-color: var(--border-2); }
+.auth-card button[type=submit] { padding: 10px; border: 0; border-radius: var(--radius);
+  background: var(--coral); color: #fff; font-weight: 600; cursor: pointer;
+  transition: background var(--t); }
+.auth-card button[type=submit]:hover { background: var(--coral-2); }
+.auth-err { color: var(--risk-high); font-size: 13px; margin: 0; }
+.auth-switch { color: var(--text-mute); font-size: 13px; text-align: center; margin: 4px 0 0; }
+.auth-switch button { background: none; border: 0; color: var(--secondary); cursor: pointer; font: inherit; }
+.auth-switch button:hover { text-decoration: underline; }
