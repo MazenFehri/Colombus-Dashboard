@@ -88,6 +88,31 @@ header.app-header {
   50%     { box-shadow: 0 0 0 6px rgba(34,197,94,0.05); }
 }
 
+/* Account cluster (auth controls in header) */
+.acct {
+  display: flex; align-items: center; gap: 12px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+  font-size: 12px;
+}
+.acct-email { color: var(--text-mute); font-weight: 500; }
+.acct-digest {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--text-mute); cursor: pointer; white-space: nowrap;
+}
+.acct-digest input { accent-color: var(--coral); cursor: pointer; margin: 0; }
+.acct-digest-err { color: var(--risk-high); font-size: 11.5px; white-space: nowrap; }
+.acct-logout {
+  appearance: none; cursor: pointer; font: inherit;
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em;
+  color: var(--text-mute);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 6px 12px; border-radius: var(--radius);
+  transition: all var(--t);
+}
+.acct-logout:hover { color: var(--coral); border-color: var(--border-2); }
+
 /* =========================================================
    Layout
    ========================================================= */

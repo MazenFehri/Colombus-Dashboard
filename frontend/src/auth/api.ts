@@ -10,13 +10,18 @@ export const tokenStore = {
 
 export interface Me { id: number; email: string; digest_enabled: boolean; }
 
+function errorDetail(body: unknown, fallback: string): string {
+  const detail = (body as { detail?: unknown } | null)?.detail;
+  return typeof detail === 'string' ? detail : fallback;
+}
+
 export async function apiRegister(email: string, password: string): Promise<void> {
   const r = await fetch(endpoints.register(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail ?? 'Registration failed');
+  if (!r.ok) throw new Error(errorDetail(await r.json().catch(() => ({})), 'Registration failed'));
 }
 
 export async function apiLogin(email: string, password: string): Promise<string> {
@@ -25,7 +30,7 @@ export async function apiLogin(email: string, password: string): Promise<string>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail ?? 'Login failed');
+  if (!r.ok) throw new Error(errorDetail(await r.json().catch(() => ({})), 'Login failed'));
   return (await r.json()).access_token as string;
 }
 

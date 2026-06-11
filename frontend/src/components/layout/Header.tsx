@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { fmtTime } from '../../lib/format';
 import { useAuth } from '../../auth/AuthContext';
 
@@ -11,6 +12,16 @@ export function Header({
   onToggleTheme: () => void;
 }) {
   const { user, logout, setDigest } = useAuth();
+  const [digestErr, setDigestErr] = useState<string | null>(null);
+
+  const onToggleDigest = async (enabled: boolean) => {
+    setDigestErr(null);
+    try {
+      await setDigest(enabled);
+    } catch {
+      setDigestErr('Save failed');
+    }
+  };
 
   return (
     <header className="app-header">
@@ -43,9 +54,10 @@ export function Header({
               <span className="acct-email">{user.email}</span>
               <label className="acct-digest">
                 <input type="checkbox" checked={user.digest_enabled}
-                       onChange={(e) => setDigest(e.target.checked)} />
+                       onChange={(e) => onToggleDigest(e.target.checked)} />
                 Daily digest
               </label>
+              {digestErr && <span className="acct-digest-err">{digestErr}</span>}
               <button className="acct-logout" onClick={logout}>Log out</button>
             </div>
           )}
