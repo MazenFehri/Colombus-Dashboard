@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
 from datetime import date
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy.orm import Session
 from app.database import get_db
-from app import schemas
-from app.services import news_section
+from app import models, schemas
+from app.services import news_section, digest_builder, email_service
+from app.services.deps import get_current_user
 from app.routers.rates import _validate_pair
 
 router = APIRouter(prefix="/news", tags=["news"])
@@ -38,3 +39,18 @@ def get_news(
         top=[_out(i, True) for i in top],
         more=[_out(i, False) for i in more],
     )
+
+
+@router.post("/email", response_model=schemas.EmailNewsOut)
+def email_news(
+    body: schemas.EmailNewsIn,
+    current: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    on_date = date.fromisoformat(body.date) if body.date else date.today()
+    subject, html = digest_builder.build_digest_html(db, on_date)
+    try:
+        email_service.send_email(current.email, subject, html)
+    except email_service.EmailError:
+        raise HTTPException(status_code=502, detail="Email delivery failed")
+    return schemas.EmailNewsOut(sent=True, to=current.email)
