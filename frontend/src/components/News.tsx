@@ -1,11 +1,23 @@
+import { useState } from 'react';
 import { useNews } from '../hooks/useNews';
 import { type Pair } from '../lib/constants';
 import { Card } from './ui';
+import { emailNews } from '../api/client';
 
 export function News({ pair }: { pair: Pair }) {
   const { data, isLoading, isError } = useNews(pair);
   const top = data?.top ?? [];
   const more = data?.more ?? [];
+
+  const [emailing, setEmailing] = useState(false);
+  const [emailMsg, setEmailMsg] = useState<string | null>(null);
+
+  const onEmail = async () => {
+    setEmailing(true); setEmailMsg(null);
+    try { const r = await emailNews(); setEmailMsg(`Sent to ${r.to}`); }
+    catch { setEmailMsg('Failed to send'); }
+    finally { setEmailing(false); }
+  };
 
   let body: React.ReactNode;
 
@@ -84,6 +96,10 @@ export function News({ pair }: { pair: Pair }) {
     <Card className="news-card">
       <div className="news-head">
         <h3>News</h3>
+        <button className="news-email-btn" onClick={onEmail} disabled={emailing}>
+          {emailing ? 'Sending…' : 'Email me this'}
+        </button>
+        {emailMsg && <span className="news-email-msg">{emailMsg}</span>}
       </div>
       <div className="news-body">{body}</div>
     </Card>

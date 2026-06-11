@@ -1,4 +1,5 @@
 import { fmtTime } from '../../lib/format';
+import { useAuth } from '../../auth/AuthContext';
 
 export function Header({
   now,
@@ -9,6 +10,8 @@ export function Header({
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
 }) {
+  const { user, logout, setDigest } = useAuth();
+
   return (
     <header className="app-header">
       <div className="header-inner">
@@ -35,6 +38,17 @@ export function Header({
             </svg>
             <span>{theme === 'light' ? 'Light' : 'Dark'}</span>
           </button>
+          {user && (
+            <div className="acct">
+              <span className="acct-email">{user.email}</span>
+              <label className="acct-digest">
+                <input type="checkbox" checked={user.digest_enabled}
+                       onChange={(e) => setDigest(e.target.checked)} />
+                Daily digest
+              </label>
+              <button className="acct-logout" onClick={logout}>Log out</button>
+            </div>
+          )}
         </div>
       </div>
     </header>
