@@ -6,6 +6,7 @@ from app.database import engine
 from app import models
 from app.routers import currencies, rates, alerts, analysis, ai, news, hedge, auth
 from app.services.deps import get_current_user
+from app.services import scheduler
 from app.config import settings
 
 
@@ -30,7 +31,11 @@ async def lifespan(app: FastAPI):
         logging.getLogger("colombus").warning(
             "JWT_SECRET is the insecure default — set a 32+ byte random JWT_SECRET in .env before any non-local deployment."
         )
-    yield
+    scheduler.start_scheduler()
+    try:
+        yield
+    finally:
+        scheduler.stop_scheduler()
 
 
 app = FastAPI(title="FX Risk Alert Dashboard", version="1.0.0", lifespan=lifespan)
