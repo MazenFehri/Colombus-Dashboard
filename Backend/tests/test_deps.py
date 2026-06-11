@@ -23,3 +23,10 @@ def test_get_current_user_bad_token(db_session):
     with pytest.raises(HTTPException) as e:
         deps.get_current_user(authorization="Bearer garbage", db=db_session)
     assert e.value.status_code == 401
+
+
+def test_get_current_user_non_numeric_sub(db_session):
+    token = security.create_access_token("not-a-number")
+    with pytest.raises(HTTPException) as e:
+        deps.get_current_user(authorization=f"Bearer {token}", db=db_session)
+    assert e.value.status_code == 401

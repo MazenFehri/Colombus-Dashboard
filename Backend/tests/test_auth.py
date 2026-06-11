@@ -34,3 +34,9 @@ def test_short_password_rejected(noauth_client):
     r = noauth_client.post("/api/v1/auth/register",
                            json={"email": "s@e.com", "password": "short"})
     assert r.status_code == 422
+
+
+def test_long_password_rejected(noauth_client):
+    r = noauth_client.post("/api/v1/auth/register",
+                           json={"email": "long@e.com", "password": "x" * 100})
+    assert r.status_code == 422

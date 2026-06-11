@@ -6,6 +6,7 @@ from app.database import engine
 from app import models
 from app.routers import currencies, rates, alerts, analysis, ai, news, hedge, auth
 from app.services.deps import get_current_user
+from app.config import settings
 
 
 def _heal_schema() -> None:
@@ -24,6 +25,11 @@ def _heal_schema() -> None:
 async def lifespan(app: FastAPI):
     models.Base.metadata.create_all(bind=engine)
     _heal_schema()
+    import logging
+    if settings.jwt_secret == "dev-insecure-change-me":
+        logging.getLogger("colombus").warning(
+            "JWT_SECRET is the insecure default — set a 32+ byte random JWT_SECRET in .env before any non-local deployment."
+        )
     yield
 
 

@@ -14,9 +14,10 @@ def get_current_user(
     token = authorization.split(" ", 1)[1]
     try:
         payload = security.decode_token(token)
+        user_id = int(payload["sub"])
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    user = db.query(models.User).filter_by(id=int(payload.get("sub", 0))).first()
+    user = db.query(models.User).filter_by(id=user_id).first()
     if user is None or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found")
     return user

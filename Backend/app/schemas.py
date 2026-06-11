@@ -151,7 +151,7 @@ class HedgeRecommendationOut(BaseModel):
 
 class RegisterIn(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: str = Field(min_length=8, max_length=72)
 
 
 class LoginIn(BaseModel):
@@ -168,6 +168,7 @@ class UserOut(BaseModel):
     id: int
     email: EmailStr
     digest_enabled: bool
+    model_config = _ORM_CONFIG
 
 
 class DigestPrefIn(BaseModel):
