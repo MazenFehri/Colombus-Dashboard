@@ -19,3 +19,8 @@ def test_email_news_returns_502_on_smtp_failure(client):
                return_value=("S", "<b>b</b>")):
         r = client.post("/api/v1/news/email", json={})
     assert r.status_code == 502
+
+
+def test_email_news_returns_422_on_bad_date(client):
+    r = client.post("/api/v1/news/email", json={"date": "not-a-date"})
+    assert r.status_code == 422

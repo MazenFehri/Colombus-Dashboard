@@ -19,6 +19,8 @@ def run_digest_job() -> None:
         users = db.query(models.User).filter_by(digest_enabled=True, is_active=True).all()
         if not users:
             return
+        # Best-effort: build_digest_html never raises (per-pair failures are swallowed
+        # internally), so the per-user sends below are the only fallible step.
         subject, html = digest_builder.build_digest_html(db, date.today())
         for user in users:
             try:

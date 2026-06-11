@@ -47,7 +47,13 @@ def email_news(
     current: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    on_date = date.fromisoformat(body.date) if body.date else date.today()
+    if body.date:
+        try:
+            on_date = date.fromisoformat(body.date)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid date format, expected YYYY-MM-DD")
+    else:
+        on_date = date.today()
     subject, html = digest_builder.build_digest_html(db, on_date)
     try:
         email_service.send_email(current.email, subject, html)

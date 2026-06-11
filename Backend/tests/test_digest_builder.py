@@ -18,3 +18,14 @@ def test_build_digest_html_contains_headlines(monkeypatch):
     assert "EURUSD top" in html
     assert "because reasons" in html
     assert "USDTND top" in html
+
+
+def test_build_digest_html_escapes_external_content(monkeypatch):
+    def fake_news(db, base, quote, on_date):
+        return [_item("<script>alert(1)</script>", "Tom & Jerry")], []
+    monkeypatch.setattr(digest_builder.news_section, "get_pair_news", fake_news)
+
+    subject, html = digest_builder.build_digest_html(db=None, on_date=date(2026, 6, 11))
+    assert "&lt;script&gt;" in html
+    assert "<script>" not in html
+    assert "Tom &amp; Jerry" in html

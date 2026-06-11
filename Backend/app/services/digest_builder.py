@@ -1,3 +1,4 @@
+import html
 from datetime import date
 from app.services import news_section
 
@@ -7,17 +8,17 @@ PAIRS = [("EUR", "USD"), ("GBP", "USD"), ("USD", "TND"), ("EUR", "TND")]
 def _section_html(base: str, quote: str, top, more) -> str:
     rows = []
     for it in top:
-        expl = f'<p style="margin:4px 0;color:#cbd5e1">{it.explanation}</p>' if it.explanation else ""
+        expl = f'<p style="margin:4px 0;color:#cbd5e1">{html.escape(it.explanation)}</p>' if it.explanation else ""
         rows.append(
             f'<li style="margin-bottom:10px">'
-            f'<a href="{it.url}" style="color:#2DD4BF;text-decoration:none">{it.headline}</a>'
-            f'<span style="color:#64748b"> — {it.source}</span>{expl}</li>'
+            f'<a href="{html.escape(it.url, quote=True)}" style="color:#2DD4BF;text-decoration:none">{html.escape(it.headline)}</a>'
+            f'<span style="color:#64748b"> — {html.escape(it.source)}</span>{expl}</li>'
         )
     for it in more:
         rows.append(
             f'<li style="margin-bottom:6px">'
-            f'<a href="{it.url}" style="color:#94a3b8;text-decoration:none">{it.headline}</a>'
-            f'<span style="color:#64748b"> — {it.source}</span></li>'
+            f'<a href="{html.escape(it.url, quote=True)}" style="color:#94a3b8;text-decoration:none">{html.escape(it.headline)}</a>'
+            f'<span style="color:#64748b"> — {html.escape(it.source)}</span></li>'
         )
     body = "".join(rows) or '<li style="color:#64748b">No headlines.</li>'
     return (
