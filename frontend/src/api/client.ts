@@ -2,6 +2,7 @@ import { endpoints } from './endpoints';
 import { splitPair, type Risk } from '../lib/constants';
 import { rangeFrom, isoDay, parseDay } from '../lib/dates';
 import { fixtures } from './mocks/fixtures';
+import { authHeaders, tokenStore } from '../auth/api';
 
 // Toggle: when VITE_USE_MOCKS is "true", serve hardcoded fixtures instead of
 // hitting the backend. Lets the UI run fully standalone.
@@ -60,7 +61,8 @@ export interface PairAnalysis {
 }
 
 async function jget<T>(url: string): Promise<T> {
-  const r = await fetch(url);
+  const r = await fetch(url, { headers: authHeaders() });
+  if (r.status === 401) { tokenStore.clear(); location.reload(); throw new Error('Unauthorized'); }
   if (!r.ok) throw new Error(`GET ${url} -> ${r.status}`);
   return (await r.json()) as T;
 }
@@ -130,7 +132,7 @@ export async function fetchCommentary(pair: string): Promise<CommentaryResult> {
   const { base, quote } = splitPair(pair);
   const r = await fetch(endpoints.commentary(), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ base, quote, date: isoDay(new Date()) }),
   });
   if (!r.ok) throw new Error(`POST commentary -> ${r.status}`);
@@ -142,4 +144,15 @@ export async function fetchCommentary(pair: string): Promise<CommentaryResult> {
 export async function fetchHedge(pair: string, exposure: string, asOf?: string): Promise<HedgeResult> {
   const { base, quote } = splitPair(pair);
   return jget<HedgeResult>(endpoints.hedge(base, quote, exposure, asOf));
+}
+
+/** Email the current user the 4-pair news digest for today. */
+export async function emailNews(): Promise<{ sent: boolean; to: string }> {
+  const r = await fetch(endpoints.emailNews(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({}),
+  });
+  if (!r.ok) throw new Error(`POST email -> ${r.status}`);
+  return (await r.json()) as { sent: boolean; to: string };
 }
