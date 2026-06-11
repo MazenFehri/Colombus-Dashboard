@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 from datetime import date, datetime
 from typing import Optional
 
@@ -147,3 +147,37 @@ class HedgeRecommendationOut(BaseModel):
     risk_level: str
     forward_rates: list[ForwardRateOut] = []
     model_config = _ORM_CONFIG
+
+
+class RegisterIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class UserOut(BaseModel):
+    id: int
+    email: EmailStr
+    digest_enabled: bool
+
+
+class DigestPrefIn(BaseModel):
+    digest_enabled: bool
+
+
+class EmailNewsIn(BaseModel):
+    date: str | None = None
+
+
+class EmailNewsOut(BaseModel):
+    sent: bool
+    to: EmailStr
